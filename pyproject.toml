@@ -1,0 +1,25 @@
+[project]
+name = "hiring-db-pipeline"
+version = "0.1.0"
+description = "US-scoped pipeline mapping college majors (CIP) to job postings, credentials, and skills"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "pydantic>=2.6",
+    "httpx>=0.27",
+    "tenacity>=8.2",
+    "typer>=0.12",
+    "structlog>=24.1",
+    "psycopg[binary]>=3.1",
+    "python-dotenv>=1.2.2",
+    "openpyxl>=3.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.uv]
+package = false
