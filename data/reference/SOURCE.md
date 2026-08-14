@@ -1,5 +1,30 @@
 # Reference data sources
 
+## Phase 3 source seed (`sources_seed.csv`)
+
+- **File**: `sources_seed.csv`
+- **What it is**: seed rows for the `sources` table, not a third-party download —
+  hand-curated, so there's no upstream URL/hash to record. Documenting the
+  provenance of the *choices* instead:
+- **Greenhouse boards (14 rows, `source_type=ats_api`, `enabled=true`)**: public
+  `boards-api.greenhouse.io` job-board API, which the project's hard constraints
+  pre-clear as ToS-clean for board data (documented at
+  https://developers.greenhouse.io/job-board.html). Each board token
+  (`stripe`, `airbnb`, `figma`, `coinbase`, `reddit`, `discord`, `instacart`,
+  `asana`, `cloudflare`, `databricks`, `robinhood`, `lyft`, `pinterest`,
+  `dropbox`) was verified live with a direct `GET .../v1/boards/{token}/jobs`
+  request on 2026-08-14 before being added — a token that 404s isn't seeded.
+  `terms_reviewed_at` is set to that verification date. This is a starter list
+  for exercising the pipeline end to end; extend or trim it freely.
+- **Handshake (1 row, `source_type=licensed_feed`, `enabled=false`)**: seeded as
+  a disabled stub only. Handshake's employer-side API is partner/credentialed
+  access, not a self-serve public endpoint like Greenhouse's — per hard
+  constraint 1(a), it can't be wired up without real credentials and a look at
+  its actual auth flow and rate limits. `base_url` points at Handshake's known
+  API host (`api.joinhandshake.com`) as a placeholder; `auth_mode=api_key` is a
+  guess pending real docs. **Needed to build this adapter for real**: API
+  credentials and the relevant API/partner documentation.
+
 ## CIP 2020 code list
 
 - **File**: `CIPCode2020.csv`

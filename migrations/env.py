@@ -15,6 +15,10 @@ load_dotenv(dotenv_path=os.path.join(PROJECT_ROOT, ".env"), override=True)
 from models.base import Base  # noqa: E402
 from models import cip_code  # noqa: E402,F401
 from models import occupation  # noqa: E402,F401
+from models import source  # noqa: E402,F401
+from models import company  # noqa: E402,F401
+from models import raw_document  # noqa: E402,F401
+from models import posting  # noqa: E402,F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
