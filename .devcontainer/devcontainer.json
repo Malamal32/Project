@@ -25,12 +25,5 @@
         "python.testing.pytestEnabled": true
       }
     }
-  },
-  "forwardPorts": [5432],
-  "portsAttributes": {
-    "5432": {
-      "label": "PostgreSQL",
-      "onAutoForward": "silent"
-    }
   }
 }

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pathfinder — Stellic Pathfinders Challenge</title>
+<link rel="stylesheet" href="css/broadsheet.css">
+<link rel="stylesheet" href="css/app.css">
+<!-- app.js registers the Alpine component; it must run before Alpine boots,
+     which document order guarantees (both scripts are deferred). -->
+<script type="module" src="js/app.js"></script>
+<script defer src="vendor/alpine.min.js"></script>
+</head>
+<body>
+
+<div x-data="pathfinder" x-cloak style="min-height:100vh;display:flex;flex-direction:column;font-family:var(--font-body);color:var(--color-text)">
+
+  <nav class="nav" data-app-chrome="true">
+    <span class="nav-brand">Pathfinder</span>
+    <template x-if="showProgress">
+      <span style="margin-left:auto;font-size:13px;opacity:0.65;white-space:nowrap" x-text="stepLabel"></span>
+    </template>
+    <template x-if="showProgress">
+      <div style="width:160px;height:4px;background:var(--color-neutral-200);border-radius:var(--radius-sm);overflow:hidden;margin-left:var(--space-3)">
+        <div :style="progressBarStyle"></div>
+      </div>
+    </template>
+  </nav>
+
+  <main style="flex:1;width:100%;max-width:760px;margin:0 auto;padding-top:var(--space-6);padding-left:var(--space-4);padding-right:var(--space-4);padding-bottom:var(--space-8);box-sizing:border-box">
+
+    <!-- ── 0. Landing ────────────────────────────────────────────────── -->
+    <section x-show="step === 0" data-screen-label="Landing" style="padding-top:var(--space-8)">
+      <p style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600;margin:0 0 var(--space-3)">Stellic Pathfinders Challenge</p>
+      <h1 style="font-family:var(--font-heading);font-size:clamp(36px,6vw,56px);line-height:1.05;margin:0 0 var(--space-4);max-width:16ch">A resume built from what's true — and what matters.</h1>
+      <p style="font-size:18px;line-height:1.6;max-width:56ch;opacity:0.85;margin:0 0 var(--space-6)">Most resume tools guess. Pathfinder doesn't. It starts with your verified academic record, then checks it against real hiring demand for the career you're aiming at — so every line on your resume is both true and relevant.</p>
+      <div style="display:grid;gap:var(--space-3);max-width:52ch;margin-bottom:var(--space-6)">
+        <div style="display:flex;gap:var(--space-3);align-items:center">
+          <span style="font-family:var(--font-heading);font-style:italic;background:var(--color-accent-100);color:var(--color-accent-700);font-size:18px;flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center">1</span>
+          <p style="margin:0;line-height:1.55"><strong>Your information determines what's true.</strong> Transcripts, coursework, experience and projects — reviewed and approved by you before anything is used.</p>
+        </div>
+        <div style="display:flex;gap:var(--space-3);align-items:center">
+          <span style="font-family:var(--font-heading);font-style:italic;background:var(--color-accent-2-100);color:var(--color-accent-2-700);font-size:18px;flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center">2</span>
+          <p style="margin:0;line-height:1.55"><strong>The market determines what's important.</strong> We compare your background to what employers actually ask for in your target role, and surface the overlap.</p>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" style="font-size:16px;padding:14px 28px" @click="goStart()">Start my resume</button>
+      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:56ch">No account required, and nothing is restored if you close or refresh this tab. Three steps do leave your browser: your transcript is read by our extraction service, the academic record you approve is saved, and drafting your resume sends that record along with the experience and projects you enter. Each of those uses an AI model to read or write text. We'll say so again at each step.</p>
+    </section>
+
+    <!-- ── 1. Career Target ──────────────────────────────────────────── -->
+    <section x-show="step === 1" data-screen-label="Career Target">
+      <h2 :style="stepHeadStyle">Where are you headed?</h2>
+      <p :style="stepSubStyle">This tells us which real job postings to compare your background against.</p>
+      <div class="field" style="margin-bottom:var(--space-4);position:relative">
+        <label for="role">Target role</label>
+        <input class="input" id="role" type="text" autocomplete="off" placeholder="e.g. Backend Developer"
+               :value="career.role" @input="onRoleChange($event.target.value)" />
+        <div x-show="hasRoleSuggestions" class="card elev-md" style="position:absolute;z-index:5;top:100%;left:0;right:0;margin-top:4px;padding:var(--space-2);max-height:220px;overflow-y:auto">
+          <template x-for="opt in roleSuggestions" :key="opt.onet_soc_code">
+            <button type="button" @click="pickRole(opt)" style="display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);font-size:14px;font-family:inherit;color:inherit" x-text="opt.display_name"></button>
+          </template>
+        </div>
+        <p style="font-size:12px;opacity:0.55;margin:var(--space-2) 0 0">Matched against O*NET occupations, so the market analysis compares against the right postings.</p>
+      </div>
+      <template x-for="f in careerFields" :key="f.key">
+        <div class="field" style="margin-bottom:var(--space-4)">
+          <label :for="f.key" x-text="f.label"></label>
+          <input class="input" :id="f.key" type="text" :placeholder="f.placeholder" x-model="career[f.key]" />
+        </div>
+      </template>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label id="level-label">Experience level</label>
+        <div class="seg" role="radiogroup" aria-labelledby="level-label">
+          <template x-for="opt in levelOptions" :key="opt">
+            <label class="seg-opt"><input type="radio" name="level" :value="opt" x-model="career.level" /><span x-text="opt"></span></label>
+          </template>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <label id="remote-label">Remote preference</label>
+        <div class="seg" role="radiogroup" aria-labelledby="remote-label">
+          <template x-for="opt in remoteOptions" :key="opt">
+            <label class="seg-opt"><input type="radio" name="remote" :value="opt" x-model="career.remote" /><span x-text="opt"></span></label>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 2. Contact Information ────────────────────────────────────── -->
+    <section x-show="step === 2" data-screen-label="Contact Information">
+      <h2 :style="stepHeadStyle">How should employers reach you?</h2>
+      <p :style="stepSubStyle">This becomes the header of your resume.</p>
+      <div data-grid-2col="true" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+        <template x-for="f in contactFields" :key="f.key">
+          <div class="field" :style="f.span">
+            <label :for="f.key" x-text="f.label"></label>
+            <input class="input" :id="f.key" type="text" :placeholder="f.placeholder" x-model="contact[f.key]" />
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- ── 3. Academic Upload ────────────────────────────────────────── -->
+    <section x-show="step === 3" data-screen-label="Academic Upload">
+      <h2 :style="stepHeadStyle">Upload your transcript or degree audit</h2>
+      <p :style="stepSubStyle">PDF only. We read institution, degree, major, coursework, honors and certifications — you'll review and approve everything before it's used.</p>
+      <label class="card elev-sm" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-3);padding:var(--space-8) var(--space-4);text-align:center;cursor:pointer;border:1.5px dashed var(--color-accent-300);background:var(--color-accent-100)">
+        <input type="file" accept="application/pdf" style="position:absolute;width:1px;height:1px;opacity:0" @change="handleUpload($event)" />
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--color-accent-100);display:flex;align-items:center;justify-content:center">
+          <svg width="28" height="28" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-accent-700)"><path opacity="0.25" d="M200,88H160a8,8,0,0,1-8-8V40Z"/><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg>
+        </div>
+        <span style="font-weight:600" x-text="uploadPrompt"></span>
+        <span style="font-size:13px;opacity:0.6" x-text="uploadSub"></span>
+      </label>
+      <div x-show="hasUploadWarnings" style="margin-top:var(--space-4);display:grid;gap:var(--space-2)">
+        <template x-for="(w, i) in uploadWarnings" :key="i">
+          <p style="margin:0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="w"></p>
+        </template>
+      </div>
+      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:60ch">Your PDF is sent to our extraction service and its text is read by an AI model. Neither the file nor its text is stored — the file is deleted as soon as it has been read, and only the fields you approve on the next screen are kept. If the service can't be reached we fall back to reading the PDF in your browser instead.</p>
+      <button type="button" class="btn btn-ghost" @click="skipUpload()" style="margin-top:var(--space-4)">I'd rather enter my details manually</button>
+    </section>
+
+    <!-- ── 4. Academic Review ────────────────────────────────────────── -->
+    <section x-show="step === 4" data-screen-label="Academic Review">
+      <h2 :style="stepHeadStyle">Review what we found</h2>
+      <p :style="stepSubStyle">Edit anything, remove anything. Nothing here reaches your resume unless it's accurate.</p>
+      <div data-grid-2col="true" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)">
+        <template x-for="f in academicFields" :key="f.key">
+          <div class="field" :style="f.span">
+            <label :for="f.key" x-text="f.label"></label>
+            <input class="input" :id="f.key" type="text" x-model="academic[f.key]" />
+          </div>
+        </template>
+      </div>
+
+      <div style="margin-bottom:var(--space-6)">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:var(--space-2)" x-text="courseworkList.label"></label>
+        <p style="margin:0 0 var(--space-3);font-size:13px;opacity:0.65;max-width:60ch">Enter each course by its code — we'll look it up in your school's catalog and pull the skills its official description names.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-2)">
+          <template x-for="(item, idx) in courseworkList.items" :key="idx">
+            <span class="tag tag-neutral" style="display:inline-flex;align-items:center;gap:6px"><span x-text="item"></span><button type="button" aria-label="Remove" @click="removeListItem(courseworkList, idx)" style="border:none;background:none;cursor:pointer;font-size:14px;line-height:1;color:inherit;opacity:0.6;padding:0">×</button></span>
+          </template>
+        </div>
+        <div style="display:flex;gap:var(--space-2)">
+          <input class="input" :placeholder="courseworkList.placeholder" x-model="academicDrafts.coursework"
+                 @keydown.enter.prevent="addListItem(courseworkList)" />
+          <button type="button" class="btn btn-secondary" @click="addListItem(courseworkList)">Add course</button>
+        </div>
+        <p x-show="hasExcludedCourses" style="margin:var(--space-3) 0 0;font-size:13px;opacity:0.65;max-width:60ch">Core and general-education courses were left out as not specific to your major: <span x-text="excludedCoursesLabel"></span>. <button type="button" @click="restoreExcluded()" style="background:none;border:none;padding:0;font:inherit;color:var(--color-accent-700);cursor:pointer;text-decoration:underline">Add them back</button></p>
+      </div>
+
+      <div x-show="canLookupCatalog" style="margin-bottom:var(--space-6)">
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center">
+          <button type="button" class="btn btn-secondary" @click="lookupCourseCatalog()" :disabled="catalogLoading" x-text="catalogLookupLabel"></button>
+          <button type="button" class="btn btn-primary" x-show="hasAllCatalogSkills" @click="addAllCatalogSkills()">Add all found skills</button>
+        </div>
+
+        <div x-show="hasCatalogResults" style="display:grid;gap:var(--space-3);margin-top:var(--space-4)">
+          <template x-for="course in catalogCards" :key="course.code">
+            <div class="card elev-sm" style="padding:var(--space-4)">
+              <div style="font-weight:600;font-size:15px;line-height:1.35"><span x-text="course.code"></span> — <span x-text="course.title"></span></div>
+              <p style="margin:var(--space-2) 0 0;font-size:14px;line-height:1.6;opacity:0.8" x-text="course.description"></p>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--space-3)">
+                <template x-for="chip in course.skillChips" :key="chip.skill">
+                  <button type="button" :class="chip.cls" :style="chip.style" :disabled="chip.held" @click="addSkill(chip.skill)" x-text="chip.label"></button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <p x-show="hasUnresolvedCourses" style="margin:var(--space-3) 0 0;font-size:13px;opacity:0.65;max-width:60ch">Not found in the catalog: <span x-text="unresolvedCoursesLabel"></span>. You can still add skills for these manually.</p>
+      </div>
+
+      <div x-show="hasSuggestedSkills" style="margin-bottom:var(--space-6)">
+        <label style="display:block;font-size:13px;font-weight:600;margin-bottom:var(--space-1)">Skills named in your coursework</label>
+        <p style="margin:0 0 var(--space-3);font-size:13px;opacity:0.65;max-width:56ch">These were found written directly in your course titles. Add the ones you'd genuinely claim — nothing is added until you approve it.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">
+          <template x-for="sug in suggestedSkills" :key="sug.skill">
+            <button type="button" @click="addSkill(sug.skill)" class="tag tag-outline" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;font-size:inherit" :title="sug.source" x-text="'+ ' + sug.skill"></button>
+          </template>
+        </div>
+      </div>
+
+      <template x-for="grp in academicLists" :key="grp.key">
+        <div style="margin-bottom:var(--space-4)">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:var(--space-2)" x-text="grp.label"></label>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-2)">
+            <template x-for="(item, idx) in grp.items" :key="idx">
+              <span class="tag tag-neutral" style="display:inline-flex;align-items:center;gap:6px"><span x-text="item"></span><button type="button" aria-label="Remove" @click="removeListItem(grp, idx)" style="border:none;background:none;cursor:pointer;font-size:14px;line-height:1;color:inherit;opacity:0.6;padding:0">×</button></span>
+            </template>
+          </div>
+          <div style="display:flex;gap:var(--space-2)">
+            <input class="input" :placeholder="grp.placeholder"
+                   :value="$data[grp.draftsKey][grp.key]"
+                   @input="$data[grp.draftsKey][grp.key] = $event.target.value"
+                   @keydown.enter.prevent="addListItem(grp)" />
+            <button type="button" class="btn btn-secondary" @click="addListItem(grp)">Add</button>
+          </div>
+        </div>
+      </template>
+    </section>
+
+    <!-- ── 5. Experience ─────────────────────────────────────────────── -->
+    <section x-show="step === 5" data-screen-label="Experience">
+      <h2 :style="stepHeadStyle">Work experience</h2>
+      <p :style="stepSubStyle">Internships, jobs, research, on-campus roles — anything with dates and a takeaway. Optional.</p>
+      <template x-for="(exp, idx) in experience" :key="exp.id">
+        <div class="card elev-sm" style="margin-bottom:var(--space-4)">
+          <div data-grid-2col="true" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
+            <!-- Bound to the row object, not experience[idx]: on removal Alpine
+                 re-evaluates these bindings during teardown, and an index into
+                 the already-shortened array would be undefined. -->
+            <template x-for="f in experienceFields" :key="f.key">
+              <div class="field"><label x-text="f.label"></label><input class="input" x-model="exp[f.key]" /></div>
+            </template>
+          </div>
+          <div class="field" style="margin-top:var(--space-3)"><label>Accomplishments / description</label>
+            <textarea class="input" rows="3" placeholder="One line per accomplishment" x-model="exp.description"></textarea></div>
+          <button type="button" class="btn btn-ghost" @click="removeExperience(idx)" style="margin-top:var(--space-2)">Remove this entry</button>
+        </div>
+      </template>
+      <button type="button" class="btn btn-secondary" @click="addExperience()">+ Add experience</button>
+    </section>
+
+    <!-- ── 6. Projects ───────────────────────────────────────────────── -->
+    <section x-show="step === 6" data-screen-label="Projects">
+      <h2 :style="stepHeadStyle">Projects</h2>
+      <p :style="stepSubStyle">Class projects, personal builds, hackathons, capstones. Optional.</p>
+      <template x-for="(proj, idx) in projects" :key="proj.id">
+        <div class="card elev-sm" style="margin-bottom:var(--space-4)">
+          <div data-grid-2col="true" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">
+            <template x-for="f in projectFields" :key="f.key">
+              <div class="field" :style="f.span"><label x-text="f.label"></label><input class="input" x-model="proj[f.key]" /></div>
+            </template>
+          </div>
+          <div class="field" style="margin-top:var(--space-3)"><label>Description</label>
+            <textarea class="input" rows="2" x-model="proj.description"></textarea></div>
+          <button type="button" class="btn btn-ghost" @click="removeProject(idx)" style="margin-top:var(--space-2)">Remove this project</button>
+        </div>
+      </template>
+      <button type="button" class="btn btn-secondary" @click="addProject()">+ Add project</button>
+    </section>
+
+    <!-- ── 7. Skills and Activities ──────────────────────────────────── -->
+    <section x-show="step === 7" data-screen-label="Skills and Activities">
+      <h2 :style="stepHeadStyle">Skills &amp; activities</h2>
+      <p :style="stepSubStyle">List what you'd claim on a resume today — we'll check it against the market next.</p>
+      <template x-for="grp in activityLists" :key="grp.key">
+        <div style="margin-bottom:var(--space-4)">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:var(--space-2)" x-text="grp.label"></label>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-2)">
+            <template x-for="(item, idx) in grp.items" :key="idx">
+              <span class="tag tag-accent-2" style="display:inline-flex;align-items:center;gap:6px"><span x-text="item"></span><button type="button" aria-label="Remove" @click="removeListItem(grp, idx)" style="border:none;background:none;cursor:pointer;font-size:14px;line-height:1;color:inherit;opacity:0.6;padding:0">×</button></span>
+            </template>
+          </div>
+          <div style="display:flex;gap:var(--space-2)">
+            <input class="input" :placeholder="grp.placeholder"
+                   :value="$data[grp.draftsKey][grp.key]"
+                   @input="$data[grp.draftsKey][grp.key] = $event.target.value"
+                   @keydown.enter.prevent="addListItem(grp)" />
+            <button type="button" class="btn btn-secondary" @click="addListItem(grp)">Add</button>
+          </div>
+        </div>
+      </template>
+      <p style="margin-top:var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">This is the last review step. Continuing saves the academic record you approved, then drafts your resume — which sends that record, plus the experience and projects you entered, to an AI model. It writes the wording; it has no say over what's true. Anything it drafts that doesn't trace back to something you entered is removed before you see it, and we'll show you what was removed.</p>
+    </section>
+
+    <!-- ── 8. Market Analysis (in progress) ──────────────────────────── -->
+    <section x-show="step === 8" data-screen-label="Market Analysis" style="padding-top:var(--space-8);text-align:center">
+      <div style="width:52px;height:52px;margin:0 auto var(--space-4);border-radius:50%;border:4px solid var(--color-accent-100);border-top-color:var(--color-accent);border-right-color:var(--color-accent-2-300);animation:spin 0.9s linear infinite"></div>
+      <h2 :style="stepHeadStyle + ';text-align:center'">Analyzing the market for <span x-text="career.role"></span></h2>
+      <p style="font-size:16px;opacity:0.75;max-width:44ch;margin:var(--space-3) auto 0" x-text="analysisMessage"></p>
+    </section>
+
+    <!-- ── 9. Market Match ───────────────────────────────────────────── -->
+    <section x-show="step === 9" data-screen-label="Market Match">
+      <h2 :style="stepHeadStyle">Your Market Match</h2>
+      <div style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-4);margin-bottom:var(--space-6);font-size:14px">
+        <div style="min-width:160px"><span style="opacity:0.6">Target career</span><br/><strong style="font-size:16px;line-height:1.4;display:inline-block" x-text="career.role"></strong></div>
+        <div style="min-width:160px"><span style="opacity:0.6">Postings analyzed</span><br/><strong style="font-size:16px;line-height:1.4;display:inline-block" x-text="marketData.postingsLabel"></strong></div>
+        <div style="min-width:160px"><span style="opacity:0.6">Market data as of</span><br/><strong style="font-size:16px;line-height:1.4;display:inline-block" x-text="marketData.dataDate"></strong></div>
+      </div>
+      <p style="font-size:16px;font-weight:600;margin-bottom:var(--space-4);background:var(--color-accent-100);color:var(--color-accent-700);display:inline-block;padding:var(--space-2) var(--space-4);border-radius:var(--radius-md)" x-text="verifiedSummary"></p>
+
+      <div data-market-head="true" style="display:grid;grid-template-columns:2fr 1fr 2.2fr;gap:var(--space-3);padding:0 var(--space-4);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.55;margin-bottom:var(--space-2)">
+        <div>Skill</div><div>Market frequency</div><div>Your match</div>
+      </div>
+      <template x-for="item in marketRows" :key="item.skill">
+        <div class="card" data-market-row="true" style="display:grid;grid-template-columns:2fr 1fr 2.2fr;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);margin-bottom:var(--space-2);box-shadow:none;border:1px solid var(--color-neutral-200)">
+          <div style="font-weight:600" x-text="item.skill"></div>
+          <div x-text="item.freqLabel"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+            <template x-if="item.isVerified">
+              <span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-accent-700);flex-shrink:0"><path opacity="0.25" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Z"/><path d="M172.24,100.24l-56,56a8,8,0,0,1-11.31,0l-24-24a8,8,0,1,1,11.31-11.31L112,140.69l50.34-50.35a8,8,0,1,1,11.9,10.9Z"/></svg><span>Verified Match</span></span>
+            </template>
+            <template x-if="item.isCoursework">
+              <span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-accent-700);flex-shrink:0"><path opacity="0.25" d="M128,136,24,88l104-48,104,48Z"/><path d="M239.5,88.7,131.5,38.7a8,8,0,0,0-6.9,0L16.5,88.7a8,8,0,0,0,0,14.6l19.6,9V152a8,8,0,0,0,16,0V119.6l16-7.4V168a24,24,0,0,0,10.4,19.8C90.4,196.6,108.9,208,128,208s37.6-11.4,49.6-20.2A24,24,0,0,0,188,168V112.2l51.5-23.9A8,8,0,0,0,239.5,88.7Z"/></svg><span>Related Coursework</span></span>
+            </template>
+            <template x-if="item.isTransferable">
+              <span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-accent-2-700);flex-shrink:0"><path opacity="0.25" d="M232,128,160,72v40H96V72L24,128l72,56V144h64v40Z"/><path d="M237,121.4l-72-56A8,8,0,0,0,152,72V96H104V72a8,8,0,0,0-13-6.3l-72,56a8,8,0,0,0,0,12.6l72,56A8,8,0,0,0,104,184V160h48v24a8,8,0,0,0,13,6.3l72-56A8,8,0,0,0,237,121.4ZM168,167.6V152a8,8,0,0,0-8-8H96a8,8,0,0,0-8,8v15.6L40.6,128,88,88.4V104a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8V88.4L215.4,128Z"/></svg><span>Transferable Experience</span></span>
+            </template>
+            <template x-if="item.isNotVerified">
+              <span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-neutral-500);flex-shrink:0"><path opacity="0.25" d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Z"/><path d="M172,120H84a8,8,0,0,0,0,16h88a8,8,0,0,0,0-16Z"/></svg><span style="opacity:0.7">Not Verified</span></span>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <p x-show="hasUnverified" style="font-size:14px;opacity:0.75;margin-top:var(--space-4);max-width:60ch">Employers frequently request these skills, but we couldn't verify them in your background. They were not added to your resume: <strong x-text="unverifiedList"></strong>.</p>
+      <p style="font-size:12px;opacity:0.5;margin-top:var(--space-4)">Market figures are an illustrative benchmark for this prototype, not a live job-board feed.</p>
+
+      <div x-show="hasTopJobs">
+        <h3 style="font-family:var(--font-heading);font-size:22px;margin:var(--space-8) 0 var(--space-2)">Current top job matches</h3>
+        <p style="opacity:0.7;font-size:14px;margin:0 0 var(--space-4);max-width:56ch">Open postings for this role, ranked by how many of their listed requirements are already verified in your background.</p>
+        <template x-for="job in topJobs" :key="job.title + job.company">
+          <div class="card elev-sm" style="margin-bottom:var(--space-3);padding:var(--space-4)">
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:var(--space-3)">
+              <div style="min-width:220px;flex:1">
+                <div style="font-weight:600;font-size:16px;line-height:1.35;margin-bottom:4px" x-text="job.title"></div>
+                <div style="font-size:14px;opacity:0.7;line-height:1.35" x-text="job.company + ' · ' + job.location"></div>
+              </div>
+              <span class="tag tag-accent" style="align-self:flex-start;flex-shrink:0;white-space:nowrap" x-text="job.matchLabel"></span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--space-3)">
+              <template x-for="chip in job.skillChips" :key="chip.label">
+                <span class="tag" :style="chip.style" x-text="chip.label"></span>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- ── 10. Resume Preview ────────────────────────────────────────── -->
+    <section x-show="step === 10" data-screen-label="Resume Preview">
+      <div data-non-resume="true" style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-4);background:none">
+        <h2 :style="stepHeadStyle + ';margin:0'">Your resume</h2>
+        <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+          <button type="button" class="btn btn-secondary" @click="regenerateWording()" :disabled="!canRegenerate">Regenerate wording</button>
+          <button type="button" class="btn btn-secondary" @click="goEdit()">Edit</button>
+          <button type="button" class="btn btn-secondary" @click="doPrint()">Print</button>
+          <button type="button" class="btn btn-secondary" @click="doPrint()">Download PDF</button>
+          <button type="button" class="btn btn-secondary" @click="downloadDoc()">Download Word</button>
+          <button type="button" class="btn btn-secondary" @click="downloadTxt()">Download Text</button>
+          <button type="button" class="btn btn-ghost" @click="clearSession()">Clear my session</button>
+        </div>
+      </div>
+
+      <!-- The service could not draft. There is no template fallback by design,
+           so say so plainly rather than showing an empty Summary block. -->
+      <div data-non-resume="true" x-show="hasResumeWarnings" style="margin-bottom:var(--space-4);display:grid;gap:var(--space-2);background:none">
+        <template x-for="(w, i) in resumeWarnings" :key="i">
+          <p style="margin:0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="w"></p>
+        </template>
+      </div>
+
+      <div data-resume-root="true" class="card elev-md" style="padding:var(--space-8);font-family:var(--font-body);box-shadow:var(--shadow-md);background:#fff;color:#111">
+        <div style="text-align:center;margin-bottom:var(--space-4)">
+          <div style="font-family:var(--font-heading);font-size:26px;font-weight:700" x-text="contact.name"></div>
+          <div style="font-size:13px;opacity:0.75;margin-top:4px" x-text="contactLine"></div>
+        </div>
+
+        <div style="margin-bottom:var(--space-4)">
+          <div :style="resumeHeadStyle">Summary</div>
+          <p style="font-size:14px;line-height:1.6;margin:var(--space-2) 0 0" x-text="resumeSummary"></p>
+        </div>
+
+        <div style="margin-bottom:var(--space-4)">
+          <div :style="resumeHeadStyle">Education</div>
+          <div style="display:flex;justify-content:space-between;margin-top:var(--space-2);font-size:14px">
+            <strong x-text="academic.institution"></strong><span x-text="academic.gradDate"></span>
+          </div>
+          <div style="font-size:14px" x-text="educationLine"></div>
+          <div x-show="academic.gpa" style="font-size:13px;opacity:0.8">GPA: <span x-text="academic.gpa"></span></div>
+          <div x-show="hasCoursework" style="font-size:13px;margin-top:4px"><em>Relevant coursework:</em> <span x-text="courseworkLine"></span></div>
+          <div x-show="hasHonors" style="font-size:13px;margin-top:2px"><em>Honors:</em> <span x-text="honorsLine"></span></div>
+        </div>
+
+        <div style="margin-bottom:var(--space-4)">
+          <div :style="resumeHeadStyle">Skills</div>
+          <p style="font-size:14px;margin:var(--space-2) 0 0" x-text="resumeSkillsLine"></p>
+        </div>
+
+        <div x-show="hasExperience" style="margin-bottom:var(--space-4)">
+          <div :style="resumeHeadStyle">Experience</div>
+          <template x-for="card in experienceCards" :key="card.id">
+            <div style="margin-top:var(--space-3)">
+              <div style="display:flex;justify-content:space-between;font-size:14px"><strong x-text="card.roleEmployer"></strong><span x-text="card.dates"></span></div>
+              <div style="font-size:13px;white-space:pre-line;margin-top:2px" x-text="card.description"></div>
+            </div>
+          </template>
+        </div>
+
+        <div x-show="hasProjects" style="margin-bottom:var(--space-4)">
+          <div :style="resumeHeadStyle">Projects</div>
+          <template x-for="card in projectCards" :key="card.id">
+            <div style="margin-top:var(--space-3)">
+              <div style="font-size:14px"><strong x-text="card.nameTech"></strong></div>
+              <div style="font-size:13px;margin-top:2px" x-text="card.description"></div>
+            </div>
+          </template>
+        </div>
+
+        <div x-show="hasActivities">
+          <div :style="resumeHeadStyle">Activities &amp; Leadership</div>
+          <p style="font-size:14px;margin:var(--space-2) 0 0" x-text="activitiesLine"></p>
+        </div>
+      </div>
+
+      <!-- Lines the evidence check deleted, with the reason. Outside the resume
+           root so it never prints. Showing these is the point: a claim that
+           could not be traced back to something the student actually has is
+           removed, and saying which and why is more useful than silence. -->
+      <div data-non-resume="true" x-show="hasResumeDropped" style="margin-top:var(--space-6);background:none">
+        <h3 style="font-family:var(--font-heading);font-size:18px;margin:0 0 var(--space-2)">Left out of your resume</h3>
+        <p style="font-size:13px;opacity:0.7;margin:0 0 var(--space-3);max-width:60ch">Every line above traces back to something you entered. These drafted lines did not, so they were removed rather than shown to you as fact.</p>
+        <div style="display:grid;gap:var(--space-2)">
+          <template x-for="(d, i) in droppedCards" :key="i">
+            <div class="card" style="padding:var(--space-3)">
+              <div style="font-size:14px;font-style:italic" x-text="d.text"></div>
+              <div style="font-size:12px;opacity:0.65;margin-top:4px" x-text="d.label"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── shared footer navigation ──────────────────────────────────── -->
+    <div x-show="showFooterNav" data-app-chrome="true" style="display:flex;justify-content:space-between;margin-top:var(--space-8)">
+      <button type="button" class="btn btn-ghost" x-show="showBack" @click="goBack()">Back</button>
+      <span x-show="!showBack"></span>
+      <button type="button" class="btn btn-primary" @click="goNext()" :disabled="nextDisabled" x-text="nextLabel"></button>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

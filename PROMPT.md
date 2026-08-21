@@ -12,6 +12,14 @@ Work in phases. After each phase, stop and show me: the migration/DDL, the row c
 
 ## Stack (use these unless you flag a concrete blocker)
 
+> **Superseded after Phase 3.** The database moved from Docker PostgreSQL to
+> **Cloudflare D1** (SQLite) with raw payload bodies in **R2**. Consequences for the
+> phases below: Alembic is replaced by `migrations/d1/*.sql`; the `pg_trgm` fuzzy tier
+> in Phase 4 is now FTS5 (token-based, so it yields no similarity ratio to scale
+> confidence by); the `pgvector` embedding tier in Phase 4 is **dropped**; and the
+> pytest fixture uses a throwaway SQLite file, not a Postgres schema. See `README.md`
+> for the current stack and the reasoning.
+
 - Python 3.11+, `uv` for dependency management
 - PostgreSQL 16 (`pgvector` extension enabled for later similarity work)
 - SQLAlchemy 2.x + Alembic for schema and migrations
@@ -22,6 +30,11 @@ Work in phases. After each phase, stop and show me: the migration/DDL, the row c
 - Structured logging (`structlog`) to stdout as JSON
 
 Repo layout: `pipeline/` (stages), `models/` (ORM), `migrations/`, `data/reference/` (checked-in reference files), `tests/`, `scripts/`.
+
+> **Also superseded.** Two directories not anticipated here now exist: `service/`
+> (the FastAPI transcript-extraction and resume-generation service — the demand
+> side) and `frontend/` (Pathfinder, its browser client). Neither is a pipeline
+> stage and neither imports one. See `README.md`.
 
 ## Hard constraints — read before writing any collector
 
@@ -119,14 +132,25 @@ Build a minimal review UI: a FastAPI + HTMX single-page queue showing the eviden
 
 ## Deliverables checklist
 
-- [ ] Alembic migrations for the full schema
-- [ ] Idempotent, re-runnable CLI stage per phase
-- [ ] `data/reference/SOURCE.md` documenting every reference file's URL, date, and hash
-- [ ] Coverage report for the CIP–SOC crosswalk
+Status as of the D1 migration and the transcript/resume service. Phases 1–3 are
+done; 4–8 are not started.
+
+- [x] ~~Alembic migrations for the full schema~~ → `migrations/d1/*.sql`, generated
+      from the ORM by `scripts/generate_d1_schema.py` and kept honest by
+      `tests/test_schema_parity.py`. Alembic is gone with Postgres.
+- [x] Idempotent, re-runnable CLI stage per phase — for the phases that exist
+      (`load_cip`, `load_occupations`, `load_cip_soc_crosswalk`, `load_sources`,
+      `ingest_postings`, `init_db`, `sync_d1`)
+- [x] `data/reference/SOURCE.md` documenting every reference file's URL, date, and hash
+- [x] Coverage report for the CIP–SOC crosswalk — `scripts/crosswalk_coverage.py`
 - [ ] Labeled eval set + precision/recall report for Phase 4
-- [ ] Evidence-offset validation test that fails loudly
-- [ ] `scripts/example_queries.sql` with the five queries below working end to end
-- [ ] `README.md` with setup, credentials expected in `.env`, and how to add a new source adapter
+- [ ] Evidence-offset validation test that fails loudly — **the posting-extraction
+      one is Phase 5 and not written.** The same guardrail exists on the resume
+      side today (`service/resume_evidence.py`, anchored on profile ids rather than
+      character offsets).
+- [ ] `scripts/example_queries.sql` with the five queries below working end to end —
+      needs Phases 4–6
+- [x] `README.md` with setup, credentials expected in `.env`, and how to add a new source adapter
 
 ## Acceptance queries
 

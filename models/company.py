@@ -5,11 +5,11 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import DateTime, Index, String
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import Index, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from models.base import Base
+from models.types import TZDateTime
 
 
 class Company(Base):
@@ -18,7 +18,7 @@ class Company(Base):
         Index("ix_companies_normalized_name_domain", "normalized_name", "domain"),
     )
 
-    company_id: Mapped[uuid.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    company_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     canonical_name: Mapped[str] = mapped_column(String(300), nullable=False)
     normalized_name: Mapped[str] = mapped_column(String(300), nullable=False)
     domain: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -26,8 +26,8 @@ class Company(Base):
     hq_city: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     naics_code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     size_bucket: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(TZDateTime, nullable=False)
 
 
 class CompanyRecord(BaseModel):

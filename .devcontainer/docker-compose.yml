@@ -5,27 +5,6 @@ services:
     volumes:
       - ../..:/workspaces:cached
     environment:
-      DATABASE_URL: postgresql+psycopg://hiring_db_pipeline:hiring_db_pipeline@db:5432/hiring_db_pipeline
-    depends_on:
-      db:
-        condition: service_healthy
-
-  db:
-    # pgvector image ships the `vector` extension the pipeline needs.
-    image: pgvector/pgvector:pg16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: hiring_db_pipeline
-      POSTGRES_PASSWORD: hiring_db_pipeline
-      POSTGRES_DB: hiring_db_pipeline
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/10-extensions.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hiring_db_pipeline -d hiring_db_pipeline"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-volumes:
-  pgdata:
+      # The pipeline's working database is a local SQLite file; the published
+      # database is Cloudflare D1. There is no database service to run here.
+      DATABASE_URL: sqlite+pysqlite:///./data/hiring_db.sqlite3

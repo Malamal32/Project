@@ -12,7 +12,7 @@ from typing import Optional
 import structlog
 import typer
 from pydantic import ValidationError
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from models.cip_code import CipCode, CipCodeRecord
@@ -116,7 +116,7 @@ def upsert_records(records: list[CipCodeRecord], session: Optional[Session] = No
     session = session or get_session()
     try:
         for record in by_level:
-            stmt = pg_insert(CipCode).values(**record.model_dump())
+            stmt = sqlite_insert(CipCode).values(**record.model_dump())
             stmt = stmt.on_conflict_do_update(
                 index_elements=["cip_code"],
                 set_={

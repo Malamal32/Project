@@ -12,7 +12,7 @@ from typing import Optional
 import structlog
 import typer
 from pydantic import ValidationError
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from models.db import get_session
@@ -64,7 +64,7 @@ def upsert_records(records: list[SourceRecord], session: Optional[Session] = Non
     session = session or get_session()
     try:
         for record in records:
-            stmt = pg_insert(Source).values(**record.model_dump())
+            stmt = sqlite_insert(Source).values(**record.model_dump())
             stmt = stmt.on_conflict_do_update(
                 index_elements=["name"],
                 set_={

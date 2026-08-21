@@ -13,7 +13,7 @@ import html
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 import structlog
@@ -69,7 +69,7 @@ class GreenhouseCollector:
         resp = self.gate.get(url, self.politeness_config)
         return RawDocument(
             url=url,
-            fetched_at=datetime.now(),
+            fetched_at=datetime.now(timezone.utc),
             http_status=resp.status_code,
             content_type=resp.headers.get("content-type", ""),
             payload=resp.text,
@@ -100,9 +100,20 @@ class GreenhouseCollector:
 
 
 def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
+    """Parse a Greenhouse timestamp into an aware datetime.
+
+    `posted_at` is stored in a timezone-aware column, so a naive value can't be
+    persisted. Greenhouse documents `first_published` as ISO 8601 with an offset;
+    when one is missing we read it as UTC rather than discarding a real posting date,
+    and log it so the assumption is auditable instead of silent.
+    """
     if not value:
         return None
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
+    if parsed.tzinfo is None:
+        log.info("greenhouse.naive_timestamp_assumed_utc", value=value)
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed

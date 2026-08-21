@@ -7,3 +7,23 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 *.log
+
+# LibreOffice lock files. data/reference/ is tracked and the .xlsx crosswalk there
+# gets opened by hand, so these land inside a tracked directory — one was committed
+# before this line existed.
+.~lock.*#
+
+# Local SQLite working database — rebuildable by re-running the loader stages, and
+# the canonical copy lives in Cloudflare D1.
+data/*.sqlite3
+data/*.sqlite3-wal
+data/*.sqlite3-shm
+
+# Raw payload bodies when running against the on-disk fallback store instead of R2.
+data/raw_store/
+
+# Build artifacts from `python -m pipeline.sync_d1`.
+data/d1_sync/
+
+node_modules/
+.wrangler/

@@ -1,0 +1,28 @@
+/* Page-level styles, ported verbatim from the design's inline <style> block
+   (Career Pathfinder.dc.html). Everything visual beyond this lives either in
+   broadsheet.css (the design system) or in the inline style attributes on the
+   markup, which is where the design puts its exact spacing and type scale. */
+
+body { margin: 0; background: var(--color-bg); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Alpine sets x-show by toggling display; x-cloak keeps the un-initialized
+   markup hidden for the first paint so every screen doesn't flash at once. */
+[x-cloak] { display: none !important; }
+
+@media (max-width: 640px) {
+  [data-grid-2col] { grid-template-columns: 1fr !important; }
+  [data-grid-2col] > * { grid-column: auto !important; }
+  [data-market-row] { grid-template-columns: 1fr auto !important; row-gap: 6px !important; }
+  [data-market-row] > :last-child { grid-column: 1 / -1 !important; }
+  [data-market-head] { display: none !important; }
+}
+
+@media print {
+  [data-app-chrome="true"] { display: none !important; }
+  [data-resume-root="true"] { display: block !important; box-shadow: none !important; margin: 0 !important; }
+  [data-non-resume="true"] { display: none !important; }
+}

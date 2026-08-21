@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // This repo ships no Worker — the pipeline is Python. This config exists so
+  // `wrangler d1 ...` and `wrangler r2 ...` resolve the right account and
+  // resources without repeating IDs on every command.
+  "name": "hiring-db-pipeline",
+  "compatibility_date": "2026-08-21",
+
+  "account_id": "ccae88e535ce0411f251dcd08737bf02",
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hiring-db",
+      "database_id": "70abc606-e937-4751-ac61-24ffd1b6f994",
+      "migrations_dir": "migrations/d1"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      // Immutable raw payload bodies; D1 stores only the content-addressed key.
+      "binding": "RAW_DOCS",
+      "bucket_name": "hiring-db-raw"
+    }
+  ]
+}

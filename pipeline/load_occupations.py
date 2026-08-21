@@ -11,7 +11,8 @@ from typing import Optional
 
 import structlog
 import typer
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import text
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from models.db import get_session
@@ -83,7 +84,7 @@ def upsert_occupations(
     session = session or get_session()
     try:
         for record in records:
-            stmt = pg_insert(Occupation).values(**record.model_dump())
+            stmt = sqlite_insert(Occupation).values(**record.model_dump())
             stmt = stmt.on_conflict_do_update(
                 index_elements=["onet_soc_code"],
                 set_={
@@ -108,7 +109,7 @@ def upsert_alt_titles(
     session = session or get_session()
     try:
         for record in records:
-            stmt = pg_insert(OccupationAltTitle).values(**record.model_dump())
+            stmt = sqlite_insert(OccupationAltTitle).values(**record.model_dump())
             stmt = stmt.on_conflict_do_update(
                 index_elements=["onet_soc_code", "alt_title"],
                 set_={
@@ -118,6 +119,32 @@ def upsert_alt_titles(
             )
             session.execute(stmt)
         session.commit()
+    finally:
+        if owns_session:
+            session.close()
+
+
+def rebuild_alt_title_fts(session: Optional[Session] = None) -> int:
+    """Rebuild the FTS5 index over occupation_alt_titles. Returns the row count.
+
+    This replaces the Postgres pg_trgm GIN index, which D1 has no equivalent for.
+    It is a full rebuild rather than an incremental sync or a set of triggers: alt
+    titles are bulk-loaded from O*NET and never edited in place, so rebuilding is
+    both simpler and self-correcting, and it keeps the index reproducible on D1
+    where virtual tables cannot be imported from a dump.
+    """
+    owns_session = session is None
+    session = session or get_session()
+    try:
+        session.execute(text("DELETE FROM occupation_alt_titles_fts"))
+        session.execute(
+            text(
+                "INSERT INTO occupation_alt_titles_fts (alt_title, onet_soc_code) "
+                "SELECT alt_title, onet_soc_code FROM occupation_alt_titles"
+            )
+        )
+        session.commit()
+        return session.execute(text("SELECT count(*) FROM occupation_alt_titles_fts")).scalar_one()
     finally:
         if owns_session:
             session.close()
@@ -137,6 +164,9 @@ def main(
     alt_titles = parse_alt_titles(job_titles_csv)
     upsert_alt_titles(alt_titles)
     log.info("occupations_load.alt_titles_done", count=len(alt_titles))
+
+    indexed = rebuild_alt_title_fts()
+    log.info("occupations_load.fts_rebuilt", count=indexed)
 
 
 if __name__ == "__main__":

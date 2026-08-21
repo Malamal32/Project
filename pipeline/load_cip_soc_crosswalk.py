@@ -16,7 +16,7 @@ import openpyxl
 import structlog
 import typer
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from models.cip_code import CipCode
@@ -112,7 +112,7 @@ def upsert_crosswalk(
         ]
 
         for record in records:
-            stmt = pg_insert(CipSocCrosswalk).values(**record.model_dump())
+            stmt = sqlite_insert(CipSocCrosswalk).values(**record.model_dump())
             stmt = stmt.on_conflict_do_update(
                 index_elements=["cip_code", "onet_soc_code", "crosswalk_source"],
                 set_={"retrieved_at": stmt.excluded.retrieved_at},

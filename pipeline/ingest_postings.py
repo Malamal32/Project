@@ -18,13 +18,14 @@ import httpx
 import structlog
 import typer
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from models.db import get_session
 from models.posting import Posting, PostingVersion
 from models.raw_document import RawDocument
 from models.source import Source
+from pipeline import raw_store
 from pipeline.collectors.base import Collector
 from pipeline.collectors.greenhouse import GreenhouseCollector
 from pipeline.company_resolution import resolve_company
@@ -72,10 +73,15 @@ def land_raw_document(
 ) -> RawDocument:
     """Insert-or-fetch: identical (source_id, url, doc_type, payload) never produces
     a duplicate row; a changed payload always lands as a new, separate row — raw
-    documents are never updated in place."""
-    payload_sha256 = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    documents are never updated in place.
+
+    The body goes to the object store first and the row records only its key. The
+    store is content-addressed, so an already-present body is a no-op write and an
+    orphaned object (stored, then the transaction rolls back) is harmless — the next
+    run addresses the identical key."""
+    payload_r2_key, payload_sha256, payload_bytes = raw_store.put(payload)
     stmt = (
-        pg_insert(RawDocument)
+        sqlite_insert(RawDocument)
         .values(
             raw_document_id=uuid.uuid4(),
             source_id=source_id,
@@ -84,7 +90,8 @@ def land_raw_document(
             fetched_at=fetched_at,
             http_status=http_status,
             content_type=content_type,
-            payload=payload,
+            payload_r2_key=payload_r2_key,
+            payload_bytes=payload_bytes,
             payload_sha256=payload_sha256,
             created_at=datetime.now(timezone.utc),
         )

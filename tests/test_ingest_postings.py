@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 import pipeline.ingest_postings as ingest_postings
+from pipeline import raw_store
 from models.company import Company
 from models.posting import Posting, PostingRecord, PostingVersion
 from models.raw_document import RawDocument
@@ -125,8 +126,10 @@ def test_content_change_writes_a_posting_version_and_never_mutates_old_raw_doc(d
     assert versions[0].description_raw_ref == original_description_ref
     assert versions[0].posting_id == original_posting_id
 
+    # The body lives in the object store now; the row only points at it. The
+    # original text must still be retrievable and unchanged.
     old_doc = db_session.get(RawDocument, original_description_ref)
-    assert old_doc.payload == "Build things."
+    assert raw_store.get(old_doc.payload_r2_key) == "Build things."
 
 
 def test_company_is_deduped_across_postings_from_the_same_source(db_session, monkeypatch):
@@ -155,9 +158,10 @@ def test_pii_is_redacted_from_the_stored_description(db_session, monkeypatch):
 
     posting = db_session.execute(select(Posting)).scalar_one()
     doc = db_session.get(RawDocument, posting.description_raw_ref)
-    assert "jane@acme.com" not in doc.payload
-    assert "555-0100" not in doc.payload
-    assert "Jane Smith" not in doc.payload
+    stored = raw_store.get(doc.payload_r2_key)
+    assert "jane@acme.com" not in stored
+    assert "555-0100" not in stored
+    assert "Jane Smith" not in stored
 
 
 def test_raw_api_response_is_landed_immutably(db_session, monkeypatch):
