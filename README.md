@@ -56,10 +56,37 @@ Tests that touch the database use the `db_session` fixture in `tests/conftest.py
 which creates a throwaway Postgres schema per test and drops it afterward — no
 separate test database needed, just the same `DATABASE_URL`.
 
-## Adding a new source adapter (Phase 3+)
+## Posting ingestion (Phase 3)
+
+```sh
+uv run python -m pipeline.load_sources        # seed/refresh the sources table
+uv run python -m pipeline.ingest_postings      # full crawl of all enabled ats_api sources
+uv run python -m pipeline.ingest_postings --source-name "Greenhouse: Stripe" --limit-per-source 20
+```
+
+Both stages are idempotent and safe to re-run: `load_sources` upserts on `name`,
+`ingest_postings` upserts on `(source_id, source_posting_id)` and only writes a new
+`posting_versions` row when the content actually changed — re-running against
+unchanged upstream data just bumps `last_seen_at`.
+
+Every fetch goes through the shared politeness layer (`pipeline/politeness.py`):
+a `robots.txt` check that hard-fails the fetch if disallowed, a per-domain rate
+limiter, retry-with-backoff on 5xx/429/transport errors, and an identifying
+User-Agent built from `PIPELINE_CONTACT_EMAIL`. Every posting description is run
+through `pipeline/pii_redaction.py` before it's stored, and US-scope is decided
+by `pipeline/us_scope.py` — both intentionally favor precision over recall
+(if it's not confidently in scope, it's excluded, not guessed), and both record
+*why* a decision was made (`us_scope_reason` on `postings`) rather than hiding it.
+
+## Adding a new source adapter
 
 Implement the `Collector` protocol (`discover`, `fetch`, `parse`) as a sibling module
-under `pipeline/`; see the Greenhouse adapter once Phase 3 lands.
+under `pipeline/collectors/`; see `pipeline/collectors/greenhouse.py` for the
+reference implementation. A career-page collector must additionally call
+`pipeline.allowlist.require_allowlisted(domain)` before fetching — populate
+`data/reference/career_page_allowlist.csv` first (it ships empty by design).
+A licensed-feed adapter needs real credentials in `.env` before it can be enabled;
+see `data/reference/SOURCE.md` for the currently-stubbed Handshake source.
 
 ## Reference data provenance
 
@@ -69,4 +96,7 @@ Every file under `data/reference/` is documented in `data/reference/SOURCE.md`
 ## Credentials expected in `.env`
 
 - `DATABASE_URL` — required.
-- Licensed feed / ATS credentials, LLM provider key — added when Phase 3/4 begin.
+- `PIPELINE_CONTACT_EMAIL` — recommended before running Phase 3 collectors; used
+  in the outbound User-Agent so a source operator can reach us if needed.
+- Licensed feed credentials (e.g. Handshake), LLM provider key — added when a
+  licensed-feed adapter or Phase 4/5 begin.

@@ -1,0 +1,16 @@
+source_type,name,base_url,auth_mode,enabled,terms_reviewed_at,crawl_delay_seconds,rate_limit_per_minute
+ats_api,Greenhouse: Stripe,https://boards-api.greenhouse.io/v1/boards/stripe,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Airbnb,https://boards-api.greenhouse.io/v1/boards/airbnb,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Figma,https://boards-api.greenhouse.io/v1/boards/figma,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Coinbase,https://boards-api.greenhouse.io/v1/boards/coinbase,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Reddit,https://boards-api.greenhouse.io/v1/boards/reddit,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Discord,https://boards-api.greenhouse.io/v1/boards/discord,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Instacart,https://boards-api.greenhouse.io/v1/boards/instacart,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Asana,https://boards-api.greenhouse.io/v1/boards/asana,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Cloudflare,https://boards-api.greenhouse.io/v1/boards/cloudflare,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Databricks,https://boards-api.greenhouse.io/v1/boards/databricks,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Robinhood,https://boards-api.greenhouse.io/v1/boards/robinhood,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Lyft,https://boards-api.greenhouse.io/v1/boards/lyft,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Pinterest,https://boards-api.greenhouse.io/v1/boards/pinterest,none,true,2026-08-14T00:00:00Z,1.0,60
+ats_api,Greenhouse: Dropbox,https://boards-api.greenhouse.io/v1/boards/dropbox,none,true,2026-08-14T00:00:00Z,1.0,60
+licensed_feed,Handshake,https://api.joinhandshake.com,api_key,false,,,
