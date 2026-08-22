@@ -281,7 +281,14 @@ async def search_roles(q: str = "") -> dict:
 
 
 @app.get("/health")
-def health() -> dict:
+async def health() -> dict:
+    """`async`, and every other route here is too, deliberately.
+
+    FastAPI dispatches a *sync* `def` endpoint to a threadpool. Cloudflare
+    Workers have no threads, so a sync route 500s there while every async one
+    beside it works — a failure that looks like a broken endpoint rather than a
+    broken execution model. Keep new routes async.
+    """
     return {"status": "ok"}
 
 

@@ -655,8 +655,11 @@ export function pathfinder() {
      *  scheme, and a second copy of it in this file is exactly the drift the
      *  scheme is written once to prevent.
      *
-     *  Titles are readable catalog titles, not the bare codes the student
-     *  typed, falling back to the raw entry when the catalog missed it.
+     *  Titles read as phrases, not as transcript rows: the registrar's
+     *  abbreviations are expanded and the code and section number dropped —
+     *  "ITSE-1345-002 — Intro ORCL&SQL" is a column width, not a course name.
+     *  The catalog's official title fills in only where the entry is a bare
+     *  code with no name of its own.
      *  Deduplicated, order preserved: distinct courses can resolve to the same
      *  catalog title, and a resume line reading "Data Structures and
      *  Algorithms, Data Structures and Algorithms" is just wrong output. */
@@ -669,9 +672,9 @@ export function pathfinder() {
       const titles = (selected.length ? selected : entries).map(entry => {
         const hit = this.catalogResults.find(c =>
           normCode(entry).startsWith(normCode(c.code)) || normCode(c.code).startsWith(normCode(entry)));
-        return hit ? hit.catalog_title : String(entry);
+        return catalog.readableCourseTitle(entry, { fallbackTitle: hit && hit.catalog_title });
       });
-      return [...new Set(titles)];
+      return [...new Set(titles.filter(Boolean))];
     },
     get hasCoursework() { return this.courseworkTitles.length > 0; },
     get courseworkLine() { return this.courseworkTitles.join(', '); },

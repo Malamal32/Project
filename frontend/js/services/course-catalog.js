@@ -90,7 +90,47 @@ const MOCK_CATALOG = [
   { subjects: ['MIS','ITEC','INFO','BANA'], range: [300, 499], title: 'Business Analytics',
     description: 'Data-driven decision making. Students query databases with SQL, build dashboards in Tableau and Power BI, and apply statistics to business problems.' },
   { subjects: ['ARTS','DSGN','VIZA'], range: [200, 499], title: 'Interaction Design',
-    description: 'Human-centered design process. Students conduct user research, produce wireframing and prototyping work in Figma, and run usability testing with attention to accessibility.' }
+    description: 'Human-centered design process. Students conduct user research, produce wireframing and prototyping work in Figma, and run usability testing with attention to accessibility.' },
+
+  // Community-college technical courses (TCCNS-style four-digit numbering).
+  // Entered one number at a time rather than by range, because these numbers
+  // are course-specific in a way the university ranges above are not: ITSE 1345
+  // is the Oracle course and ITSE 1359 is the Python course, and a range that
+  // covered both would hand a student every technology either one teaches.
+  // Over-assigning here is not a cosmetic error — `extracted_skills` feeds the
+  // skills the student is offered, and from there what the resume claims.
+  { subjects: ['COSC'], range: [1301, 1301], title: 'Introduction to Computing',
+    description: 'Survey of computer systems, terminology, and the role of computing in organizations. Introduces problem solving and the software development process.' },
+  { subjects: ['COSC'], range: [1336, 1336], title: 'Programming Fundamentals I',
+    description: 'First course in program design. Covers data types, control structures, functions, and testing, with programs written and debugged by the student.' },
+  { subjects: ['COSC'], range: [1337, 1337], title: 'Programming Fundamentals II',
+    description: 'Continuation of program design. Covers object-oriented design, arrays, recursion, file processing, and an introduction to data structures and algorithms.' },
+  { subjects: ['COSC'], range: [2336, 2336], title: 'Programming Fundamentals III',
+    description: 'Further study of data structures and algorithms, including trees, hashing, and sorting, with analysis of algorithmic complexity.' },
+  { subjects: ['ITSE'], range: [1311, 1311], title: 'Beginning Web Programming',
+    description: 'Authoring of web pages. Students write HTML and CSS by hand and add client-side behaviour with JavaScript.' },
+  { subjects: ['ITSE'], range: [1345, 1345], title: 'Introduction to Oracle SQL',
+    description: 'Relational database concepts using an Oracle database. Students write SQL queries against multiple tables and apply database design principles to schema work.' },
+  { subjects: ['ITSE'], range: [1359, 1359], title: 'Introduction to Scripting Languages: Python',
+    description: 'Scripting for automation and data handling. Students write Python programs covering control flow, functions, collections, and file processing.' },
+  { subjects: ['ITSE'], range: [2309, 2309], title: 'Database Programming',
+    description: 'Programming against a relational database. Covers stored procedures, transactions, and application code that issues SQL, with attention to database design.' },
+  { subjects: ['ITSE'], range: [2317, 2317], title: 'Java Programming II',
+    description: 'Second course in Java. Covers collections, exception handling, file and stream processing, and unit testing of Java classes.' },
+  { subjects: ['ITSE'], range: [2321, 2321], title: 'Object-Oriented Programming (Java)',
+    description: 'Object-oriented analysis and design implemented in Java. Covers inheritance, polymorphism, interfaces, and design of class hierarchies.' },
+  { subjects: ['ITSE'], range: [2331, 2331], title: 'Advanced C++ Programming',
+    description: 'Advanced features of C++, including templates, operator overloading, memory management, and the standard library.' },
+  { subjects: ['ITSC'], range: [1307, 1307], title: 'UNIX Operating System I',
+    description: 'Use and administration of a UNIX system. Covers the shell, the file system, permissions, process control, and scripting of routine tasks, building operating systems fundamentals.' },
+  { subjects: ['ITNW'], range: [1325, 1325], title: 'Fundamentals of Networking Technologies',
+    description: 'Local and wide area networks. Covers the OSI model, addressing, routing and switching concepts, and network troubleshooting.' },
+  // Deliberately names no cloud vendor: a survey course is not grounds for a
+  // resume to claim AWS or Azure, and naming one here would put it there.
+  { subjects: ['ITNW'], range: [1335, 1335], title: 'Cloud Computing',
+    description: 'Service and deployment models for cloud platforms, covering virtualization, storage and compute services, and the networking and cybersecurity considerations of hosted infrastructure.' },
+  { subjects: ['ITNW'], range: [1337, 1337], title: 'Introduction to the Internet: Web Development',
+    description: 'Internet protocols and the structure of the web. Students build pages with HTML and CSS and publish them to a web server.' }
 ];
 
 // Core-curriculum / general-education subjects: excluded from a resume's
@@ -104,7 +144,13 @@ const CORE_SUBJECTS = new Set([
 // Subjects that belong to each major family. Used to keep courses that are
 // genuinely part of the student's program of study.
 const MAJOR_SUBJECTS = [
-  { match: /computer science|software|computing|informatics/i, subjects: ['CS','CSCE','COSC','CPSC','ECEN','EE','ECE','MATH','M','STAT','MIS','ITEC','INFO'] },
+  // Abbreviated forms are matched too ("Softw Dev & Comp Sci" is how a degree
+  // reaches us off a transcript). A major that matches no family here is not a
+  // small problem: `filterRelevantCourses` then has no subject list, and every
+  // course survives on the upper-division rule alone.
+  { match: /computer science|comp\.? ?sci|software|softw|computing|informatics|computer programming/i,
+    subjects: ['CS','CSCE','COSC','CPSC','ECEN','EE','ECE','MATH','M','STAT','MIS','ITEC','INFO',
+               'ITSE','ITNW','ITSC','ITSY','INEW','IMED'] },
   { match: /data science|analytics|statistics/i, subjects: ['STAT','STA','DATA','CS','CSCE','MATH','M','BANA','MIS','ISQS','INFO'] },
   { match: /mechanical engineer/i, subjects: ['MEEN','ME','MECH','MATH','M','PHYS','MSEN','AERO'] },
   { match: /civil engineer|construction/i, subjects: ['CVEN','CE','CIVE','COSC','ARCH','MATH','M','MEEN'] },
@@ -153,7 +199,7 @@ export function filterRelevantCourses({ major, degree, courses } = {}) {
     if (!parsed) { excluded.push(String(raw)); continue; }
     const isCore = CORE_SUBJECTS.has(parsed.subject);
     const inMajor = majorSubjects.has(parsed.subject);
-    const upperDivision = parsed.number >= 300;
+    const upperDivision = courseLevel(parsed.number) >= 3;
     // Keep if it belongs to the major family, or is an upper-division course
     // outside the core curriculum. Everything else is general education.
     if (inMajor || (upperDivision && !isCore)) relevant.push(String(raw));
@@ -162,10 +208,111 @@ export function filterRelevantCourses({ major, degree, courses } = {}) {
   return { relevant, excluded };
 }
 
+/** Year in the sequence a course number denotes, across both numbering schemes.
+ *
+ *  Three-digit numbers put the level in the hundreds (CS 314 is third year);
+ *  four-digit numbers put it in the thousands (ITSE 1345 is first year, and the
+ *  345 is the department's own sequence, not a level). Reading the four-digit
+ *  form with the three-digit rule makes every community-college course look
+ *  upper-division — which meant a whole transcript passed the relevance filter
+ *  untouched and landed on the resume. */
+function courseLevel(number) {
+  return number >= 1000 ? Math.floor(number / 1000) : Math.floor(number / 100);
+}
+
 function parseCourseCode(raw) {
   const m = String(raw).match(/([A-Z]{1,5})\s?-?\s?(\d{3,4})/i);
   if (!m) return null;
   return { subject: m[1].toUpperCase(), number: parseInt(m[2], 10), code: `${m[1].toUpperCase()} ${m[2]}` };
+}
+
+// --- readable titles -------------------------------------------------------
+//
+// A transcript title is abbreviated to fit a registrar's fixed-width column,
+// not to be read: "ITSE-1345-002 — Intro ORCL&SQL". Printed as-is on a resume
+// it costs the student the one section a reader scans for what they can
+// actually do, because nobody outside that registrar parses it.
+//
+// The catalog is the real authority on a course's name, so `lookupCourses`
+// remains the first choice and this only handles what the catalog missed.
+// Expansion is display-only and deliberately dumb: a fixed table of registrar
+// abbreviations, and any token not in it passes through untouched. It renames
+// nothing — the profile string is what the resume's evidence still rests on,
+// and `service/resume_evidence.py` still compares the model's coursework
+// claims against that string character for character.
+//
+// The table is short on purpose. Only abbreviations with one expansion in a
+// course title are here: "Eng" (English or Engineering) and "Stat" (Statistics
+// or Statics) are absent and stay absent — an unexpanded abbreviation is
+// merely terse, a wrongly expanded one puts a course the student never took on
+// their resume.
+const TITLE_ABBREVIATIONS = {
+  adv: 'Advanced', beg: 'Beginning', comput: 'Computing', db: 'Database',
+  dev: 'Development', fund: 'Fundamentals', fundamentals: 'Fundamentals',
+  info: 'Information', intro: 'Introduction', lang: 'Languages',
+  mgmt: 'Management', oop: 'Object-Oriented Programming', orcl: 'Oracle',
+  prin: 'Principles', prog: 'Programming', progr: 'Programming',
+  sci: 'Science', script: 'Scripting', softw: 'Software', sys: 'Systems'
+};
+
+// Applied before the single-token pass, for the abbreviations that only resolve
+// as a pair ("Op" alone is not "Operating").
+const TITLE_PHRASES = [
+  [/\bop\s+sys\b/gi, 'Operating Systems'],
+  [/\bintro\s+to\b/gi, 'Introduction to']
+];
+
+// Canonical casing for technologies, so an expanded title reads
+// "Object-Oriented Programming (Java)" rather than "(java)". Reuses the
+// vocabulary above rather than a second list: these are the same names the
+// catalog descriptions are mined for.
+const CANONICAL_TECH = new Map(SKILL_VOCABULARY.map(s => [s.toLowerCase(), s]));
+
+/**
+ * One approved course entry -> the phrase a resume should print for it.
+ *
+ * Drops the course code and section number ("ITSE-1345-002 — ") when a title
+ * follows it: a resume's coursework line is titles, and the section number is
+ * an artifact of which room the student sat in.
+ *
+ * `fallbackTitle` is the catalog's official title, used only when the entry
+ * carries no title of its own. That order is deliberate. The catalog is matched
+ * by subject and number, so its title is right about the course but is not the
+ * student's record of it; where the transcript named the course, that name is
+ * both truer and more specific. A bare "CS 314" says less than it could, but
+ * printing nothing says nothing at all, so it is returned whole.
+ */
+export function readableCourseTitle(raw, { fallbackTitle } = {}) {
+  const label = String(raw == null ? '' : raw).trim();
+  if (!label) return '';
+
+  // ' — ' is the separator `splitCourseLabel` in api-service.js writes and
+  // reads; keep the two in step if either changes.
+  const parts = label.split(' — ');
+  let title = parts.length > 1 ? parts.slice(1).join(' — ').trim() : '';
+  if (!title) return fallbackTitle || label;
+
+  for (const [pattern, replacement] of TITLE_PHRASES) title = title.replace(pattern, replacement);
+
+  title = title.replace(/[A-Za-z][A-Za-z+#.]*/g, (token) => {
+    const key = token.toLowerCase();
+    if (CANONICAL_TECH.has(key)) return CANONICAL_TECH.get(key);
+    return TITLE_ABBREVIATIONS[key] || token;
+  });
+
+  // "Introduction Oracle & SQL" is not English. Supply the preposition only
+  // where a word actually follows, and never a second one.
+  title = title.replace(/\bIntroduction\s+(?!to\b)(?=[A-Za-z])/g, 'Introduction to ');
+  // Registrar titles run these together ("ORCL&SQL", "Lang:Python"); a resume
+  // line reads them as one word otherwise. Hyphens are left alone: nothing
+  // here can tell "Fund-Network" (a separator) from "Object-Oriented" (a word),
+  // and breaking the second is worse than leaving the first tight.
+  title = title.replace(/([A-Za-z0-9])\s*&\s*([A-Za-z0-9])/g, '$1 & $2')
+               .replace(/\s*:\s*/g, ': ')
+               .replace(/\s{2,}/g, ' ')
+               .trim();
+
+  return title;
 }
 
 function findCatalogEntry(parsed) {
