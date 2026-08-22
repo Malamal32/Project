@@ -1,12 +1,14 @@
 // Real client-side PDF text extraction + academic normalization.
 // Mirrors service/academic_extraction.py: rule-based only, never fabricates a
 // field that isn't literally present in the document. Runs entirely in the
-// browser — on this path the file is never uploaded, stored, or logged.
+// browser — the file is never uploaded, stored, or logged on any path.
 //
-// This is the *fallback* path. `parseTranscript` in api-service.js posts the
-// PDF to the service first, which runs Claude-based extraction; it only reaches
-// this module when that service is unreachable. Same rules either way, lower
-// quality here — see README, "Two extraction stages, one of them a fallback".
+// Two exports, two roles. `extractText` is always used: `parseTranscript` in
+// api-service.js reads the PDF here and posts only the resulting text to the
+// service for Claude-based extraction. `normalizeAcademicText` is the
+// *fallback*, reached only when that service is unreachable — same rules
+// either way, lower quality here. See README, "Two extraction stages, one of
+// them a fallback".
 
 // Vendored locally (pdfjs-dist 4.6.82) rather than pulled from a CDN, so the
 // app runs offline and a student's PDF never depends on a third-party host.

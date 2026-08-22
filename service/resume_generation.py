@@ -135,9 +135,17 @@ three strongest supported skills. Cite every id the sentences rest on. No \
 adjectives the profile does not earn: "passionate", "results-driven", and \
 "proven track record" are banned.
 
-`skills` — a flat list, no proficiency ratings. Each entry names one skill and \
-cites its evidence. Set `market_skill_id` when the entry corresponds to a skill \
-from the match report.
+Do not inventory. The summary sits directly above sections that already list \
+the education, the coursework, and the skills, so a summary that reads \
+"coursework covers A, B, C and D" spends the most-read lines on the page \
+repeating the page. Name at most three capabilities, and say what the student \
+can do with them for this role — the angle a reader cannot get by scanning the \
+sections below. If the only true thing to say is thin, two sentences that are \
+thin and specific beat three that pad.
+
+`skills` — a flat list, no proficiency ratings, at most 12 entries. Each entry \
+names one skill and cites its evidence. Set `market_skill_id` when the entry \
+corresponds to a skill from the match report.
 
 `experience` — for each experience item, 1 to 3 bullets. Each starts with an \
 action verb, runs roughly 12 to 28 words, and cites the id of the experience it \
@@ -152,6 +160,15 @@ reformat a date, do not normalize a GPA, do not fill in a blank. Use null for \
 anything absent. `coursework` and `honors` are SELECTED and ORDERED by \
 relevance to the target role, but each entry's text must be the exact profile \
 string, unaltered — the validator compares them character for character.
+
+Coursework is a selection, not a transcript. Return the 4 to 6 courses that \
+most directly support the target role, strongest first; if the profile has \
+fewer than 4, return what it has. Returning every course listed is the wrong \
+answer even when every course is real — it reads as a dump, it buries the \
+relevant courses among the general-education ones, and it costs the student \
+the only line a reader gives this section. Prefer the advanced course over the \
+introductory one when both cover the same ground, and drop the course that \
+supports nothing the target role asks for.
 
 Empty sections are correct when the profile has nothing to fill them. An empty \
 projects list is a true resume; an invented project is not.

@@ -9,9 +9,10 @@
 // reload. It is not, however, private to the tab, and the landing screen says
 // so: three steps leave the browser, each through js/services/api-service.js.
 //
-//   - uploading a transcript POSTs the PDF to the extraction service, which
-//     sends its text to the Anthropic API (falls back to in-browser parsing
-//     when the service is unreachable);
+//   - uploading a transcript reads the PDF here and POSTs only its text to the
+//     extraction service, which sends that text to the Anthropic API (the file
+//     itself never leaves the tab; falls back to in-browser rule-based parsing
+//     of the same text when the service is unreachable);
 //   - continuing past the review step saves the reviewed profile to the
 //     database — the only write in the whole flow;
 //   - generating a resume sends that profile plus the typed-in experience and
@@ -101,6 +102,9 @@ function freshState() {
     resumeStatus: 'idle',
     resumeWarnings: [],
     resumeDropped: [],
+    // Evidence ids of the courses the drafter chose to surface, in its order.
+    // Empty means "no selection came back" — see `courseworkTitles`.
+    resumeCourseIds: [],
     // Which stage produced the academic fields, carried from the parse response
     // through to the save so the stored row records real provenance. "manual"
     // is legitimate — a student may type in everything themselves.
@@ -117,6 +121,7 @@ export function pathfinder() {
     // Not part of the resettable wizard state.
     _analysisRunning: false,
     _roleQueryToken: 0,
+    _uploadToken: 0,
 
     // ---- static field descriptors -------------------------------------
     // The prototype rebuilt these arrays (with a closure per field) on every
@@ -245,9 +250,15 @@ export function pathfinder() {
 
     // ---- transcript upload ---------------------------------------------
 
+    // The two busy states are the two things that actually happen, in order:
+    // the browser reads the PDF, then the text (only the text) goes to the
+    // service. Naming them separately is not decoration — extraction can take
+    // the better part of a minute, and a student staring at one frozen label
+    // has no way to tell a slow model from a hung page.
     get uploadPrompt() {
       return {
         parsing: 'Reading your document…',
+        extracting: 'Pulling out your details…',
         done: 'Document read',
         failed: "We couldn't read that PDF",
         manual: 'Entering details manually'
@@ -255,20 +266,30 @@ export function pathfinder() {
     },
     get uploadSub() {
       return {
-        parsing: 'This happens in your browser — the file is never uploaded',
+        parsing: 'Your browser is reading the PDF — the file itself is never uploaded',
+        extracting: 'Only the text was sent. This can take up to a minute',
         done: 'Continue to review what we found',
         failed: 'Try another file, or continue and enter your details manually',
         manual: 'Continue to fill in your academic information'
       }[this.uploadStatus] || 'Transcript, unofficial transcript, or degree audit';
     },
+    get uploadBusy() { return this.uploadStatus === 'parsing' || this.uploadStatus === 'extracting'; },
     get hasUploadWarnings() { return (this.uploadWarnings || []).length > 0; },
 
     async handleUpload(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
+      const token = ++this._uploadToken;
       this.uploadStatus = 'parsing';
       this.uploadWarnings = [];
-      const res = await api.parseTranscript(file);
+      const res = await api.parseTranscript(file, {
+        onPhase: phase => { if (token === this._uploadToken) this.uploadStatus = phase; }
+      });
+      // A student who gave up waiting and chose to type their details, or who
+      // picked a different file, has moved on. Landing this result on top of
+      // that would overwrite what they typed with fields they never saw, and
+      // mislabel them as extracted — so a superseded parse is dropped whole.
+      if (token !== this._uploadToken) return;
       this.academic = { ...this.academic, ...res.academic_profile };
       this.uploadWarnings = res.warnings || [];
       this.uploadStatus = res.success ? 'done' : 'failed';
@@ -280,9 +301,11 @@ export function pathfinder() {
       if (res.success) await this.processTranscriptCourses();
     },
     skipUpload() {
+      this._uploadToken++;   // abandons a parse still in flight — see handleUpload
       this.uploadStatus = 'manual';
       this.uploadWarnings = [];
       this.extractionMethod = 'manual';
+      this.step = 4;         // the screen that has the fields to type into
     },
 
     // ---- coursework and catalog ----------------------------------------
@@ -557,6 +580,13 @@ export function pathfinder() {
       });
 
       this.resumeSummaryText = res.summary || '';
+      // The drafter picks the handful of courses that answer the target role and
+      // orders them; every course the student took is a transcript, not a resume
+      // line. Taken as ids rather than text because the ids are exact — the
+      // validated claim text is the profile string verbatim, but the catalog
+      // titles this UI renders are not, so matching on text would miss.
+      const education = (res.resume && res.resume.education) || {};
+      this.resumeCourseIds = (education.coursework || []).flatMap(c => c.evidence || []);
       this.resumeWarnings = res.warnings || [];
       // Claims the evidence validator deleted. Shown, not swallowed: "we left
       // this out and here is why" is a usable answer and it keeps the guardrail
@@ -610,21 +640,40 @@ export function pathfinder() {
         a.minor && ('· Minor: ' + a.minor)
       ].filter(Boolean).join(' ');
     },
-    /** The resume shows readable catalog titles, not the bare course codes the
-     *  student typed. Falls back to the raw entry when the catalog missed it.
+    /** The courses the resume shows, in the order it shows them.
      *
+     *  A student's approved list is a transcript — every course they took, in
+     *  whatever order the extractor found them. A resume line is a selection:
+     *  the few that answer the role, strongest first. The drafter makes that
+     *  call (it is the one stage that knows the market demand), so when it
+     *  returns a selection this follows it, and falls back to the full list
+     *  only when there is no draft to follow — a resume that lists everything
+     *  beats one with no education section at all.
+     *
+     *  Indexed through `collectProfileItems` rather than by re-deriving
+     *  `course_<i>` here: that function is the sole definition of the id
+     *  scheme, and a second copy of it in this file is exactly the drift the
+     *  scheme is written once to prevent.
+     *
+     *  Titles are readable catalog titles, not the bare codes the student
+     *  typed, falling back to the raw entry when the catalog missed it.
      *  Deduplicated, order preserved: distinct courses can resolve to the same
      *  catalog title, and a resume line reading "Data Structures and
      *  Algorithms, Data Structures and Algorithms" is just wrong output. */
     get courseworkTitles() {
-      const titles = (this.academic.coursework || []).map(entry => {
+      const entries = (this.academic.coursework || []).map(v => String(v == null ? '' : v).trim()).filter(Boolean);
+      const ids = api.collectProfileItems(this.academic, this.activities).coursework.map(c => c.id);
+      const byId = new Map(ids.map((id, i) => [id, entries[i]]));
+
+      const selected = this.resumeCourseIds.map(id => byId.get(id)).filter(Boolean);
+      const titles = (selected.length ? selected : entries).map(entry => {
         const hit = this.catalogResults.find(c =>
           normCode(entry).startsWith(normCode(c.code)) || normCode(c.code).startsWith(normCode(entry)));
         return hit ? hit.catalog_title : String(entry);
       });
       return [...new Set(titles)];
     },
-    get hasCoursework() { return (this.academic.coursework || []).length > 0; },
+    get hasCoursework() { return this.courseworkTitles.length > 0; },
     get courseworkLine() { return this.courseworkTitles.join(', '); },
     get hasHonors() { return (this.academic.honors || []).length > 0; },
     get honorsLine() { return (this.academic.honors || []).join(', '); },

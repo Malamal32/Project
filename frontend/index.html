@@ -107,7 +107,11 @@
       <p :style="stepSubStyle">PDF only. We read institution, degree, major, coursework, honors and certifications — you'll review and approve everything before it's used.</p>
       <label class="card elev-sm" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-3);padding:var(--space-8) var(--space-4);text-align:center;cursor:pointer;border:1.5px dashed var(--color-accent-300);background:var(--color-accent-100)">
         <input type="file" accept="application/pdf" style="position:absolute;width:1px;height:1px;opacity:0" @change="handleUpload($event)" />
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--color-accent-100);display:flex;align-items:center;justify-content:center">
+        <!-- Same spinner as the market-analysis screen. Extraction is a model
+             call and can run for the better part of a minute; without motion
+             the screen is indistinguishable from a hung one. -->
+        <div x-show="uploadBusy" style="width:52px;height:52px;border-radius:50%;border:4px solid var(--color-accent-100);border-top-color:var(--color-accent);border-right-color:var(--color-accent-2-300);animation:spin 0.9s linear infinite"></div>
+        <div x-show="!uploadBusy" style="width:56px;height:56px;border-radius:50%;background:var(--color-accent-100);display:flex;align-items:center;justify-content:center">
           <svg width="28" height="28" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-accent-700)"><path opacity="0.25" d="M200,88H160a8,8,0,0,1-8-8V40Z"/><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"/></svg>
         </div>
         <span style="font-weight:600" x-text="uploadPrompt"></span>
@@ -118,7 +122,7 @@
           <p style="margin:0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="w"></p>
         </template>
       </div>
-      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:60ch">Your PDF is sent to our extraction service and its text is read by an AI model. Neither the file nor its text is stored — the file is deleted as soon as it has been read, and only the fields you approve on the next screen are kept. If the service can't be reached we fall back to reading the PDF in your browser instead.</p>
+      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:60ch">Your browser reads the PDF itself — the file is never uploaded. Only the text it contains is sent to our extraction service, where an AI model reads it into fields. Neither the file nor its text is stored, and only the fields you approve on the next screen are kept. If the service can't be reached, that text is read by simpler rules in your browser instead.</p>
       <button type="button" class="btn btn-ghost" @click="skipUpload()" style="margin-top:var(--space-4)">I'd rather enter my details manually</button>
     </section>
 

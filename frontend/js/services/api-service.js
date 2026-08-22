@@ -448,15 +448,20 @@ function toUiProfile(p) {
  * If the service is unreachable we still have the text, so the flow degrades to
  * the rule-based mirror in academic-extraction.js rather than failing.
  *
+ * `onPhase` is called with 'parsing' then 'extracting' as the two halves begin.
+ * The second half is a model call and is the slow one; the caller needs to be
+ * able to say which one the student is waiting on.
+ *
  * Returns { success, academic_profile, warnings, review_required,
  * extraction_method }. Nothing is stored by either path: the student reviews
  * every field, and saving is a separate call to /api/student/profile.
  */
-export async function parseTranscript(file) {
+export async function parseTranscript(file, { onPhase = () => {} } = {}) {
   const { extractText, PdfValidationError } = await import('./academic-extraction.js');
 
   let text;
   try {
+    onPhase('parsing');
     text = await extractText(file);
   } catch (err) {
     const message = err instanceof PdfValidationError
@@ -467,6 +472,7 @@ export async function parseTranscript(file) {
   }
 
   try {
+    onPhase('extracting');
     const response = await fetch(`${TRANSCRIPT_SERVICE_URL}/api/transcript/parse-text`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
