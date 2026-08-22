@@ -1,0 +1,56 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // The deployed Pathfinder app: the FastAPI service from `service/` running on
+  // Python Workers, with the browser client served from the same origin.
+  //
+  // Build first — `main` and `assets` both point into `worker/build/`, which is
+  // staged from the repo by `uv run python -m scripts.build_worker`:
+  //
+  //   uv run python -m scripts.build_worker
+  //   cd worker && uv run pywrangler deploy
+  //
+  // The root `wrangler.jsonc` is a different thing: it carries no Worker and
+  // exists so `wrangler d1 ...` resolves the right database for the pipeline.
+  "name": "pathfinder",
+  "main": "build/entry.py",
+  "compatibility_date": "2026-08-21",
+  "compatibility_flags": ["python_workers"],
+
+  "account_id": "ccae88e535ce0411f251dcd08737bf02",
+
+  "observability": { "enabled": true },
+
+  // Same database the pipeline publishes to with `python -m pipeline.sync_d1`.
+  // The Worker reads the occupation index it loaded and writes student profiles
+  // beside it.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hiring-db",
+      "database_id": "70abc606-e937-4751-ac61-24ffd1b6f994"
+    }
+  ],
+
+  // The browser client. `run_worker_first` so the Python routes win: without
+  // it the asset server would answer /api/* with a 404 before the Worker ever
+  // sees the request.
+  "assets": {
+    "directory": "build/assets",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+
+  "vars": {
+    // Same origin as the API, so the browser's TRANSCRIPT_SERVICE_URL stays
+    // empty and no CORS entry is needed.
+    "PATHFINDER_ALLOWED_ORIGINS": "*",
+    // Static assets are served by the assets binding above, not by FastAPI.
+    "SERVE_FRONTEND": "false"
+  }
+
+  // ANTHROPIC_API_KEY is a secret, not a var:
+  //   cd worker && npx wrangler secret put ANTHROPIC_API_KEY
+  // Without it the deploy still works — extraction falls back to rules and
+  // resume drafting reports itself unavailable.
+}

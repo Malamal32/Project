@@ -50,7 +50,9 @@ class _FakeResponse:
 
 
 def _install_fake_client(monkeypatch, *, response=None, error=None, capture=None):
-    def parse(**kwargs):
+    # `async def`: the SDK client is AsyncAnthropic, because the same module runs
+    # on Cloudflare Workers where only async HTTP clients exist.
+    async def parse(**kwargs):
         if capture is not None:
             capture.update(kwargs)
         if error is not None:
@@ -96,7 +98,7 @@ SAMPLE = ResumeDocument(
 )
 
 
-def _generate(**overrides):
+async def _generate(**overrides):
     kwargs = dict(
         career=CAREER,
         profile=PROFILE,
@@ -107,22 +109,22 @@ def _generate(**overrides):
         variant=0,
     )
     kwargs.update(overrides)
-    return generate_resume(**kwargs)
+    return await generate_resume(**kwargs)
 
 
 # --- enablement ------------------------------------------------------------
 
 
-def test_disabled_without_credentials():
+async def test_disabled_without_credentials():
     assert resume_generation.is_enabled() is False
 
 
-def test_enabled_with_api_key(monkeypatch):
+async def test_enabled_with_api_key(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     assert resume_generation.is_enabled() is True
 
 
-def test_disabled_by_kill_switch(monkeypatch):
+async def test_disabled_by_kill_switch(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setattr(resume_generation, "RESUME_GENERATION_ENABLED", False)
     assert resume_generation.is_enabled() is False
@@ -131,13 +133,13 @@ def test_disabled_by_kill_switch(monkeypatch):
 # --- request shape ---------------------------------------------------------
 
 
-def test_request_shape(monkeypatch):
+async def test_request_shape(monkeypatch):
     """The system prompt must be cacheable, the profile must be delimited and
     framed as data, and the structured-output class must be the one the
     validator understands."""
     capture = {}
     _install_fake_client(monkeypatch, response=_FakeResponse(SAMPLE), capture=capture)
-    _generate()
+    await _generate()
 
     assert capture["output_format"] is ResumeDocument
     assert capture["system"][0]["cache_control"] == {"type": "ephemeral"}
@@ -149,7 +151,7 @@ def test_request_shape(monkeypatch):
     assert "untrusted" in resume_generation.SYSTEM_PROMPT.lower()
 
 
-def test_user_turn_exposes_every_citable_id():
+async def test_user_turn_exposes_every_citable_id():
     """The model can only cite ids it was shown. If an id the validator accepts
     never reaches the prompt, that item is silently unusable."""
     turn = build_user_turn(
@@ -165,7 +167,7 @@ def test_user_turn_exposes_every_citable_id():
         assert item_id in turn, item_id
 
 
-def test_user_turn_is_deterministic():
+async def test_user_turn_is_deterministic():
     """Byte-identical prompts for equal inputs: the cached prefix depends on it,
     and so does being able to assert on payloads at all."""
     args = dict(
@@ -180,7 +182,7 @@ def test_user_turn_is_deterministic():
     assert build_user_turn(**args) == build_user_turn(**args)
 
 
-def test_variant_reaches_the_prompt():
+async def test_variant_reaches_the_prompt():
     turn = build_user_turn(
         career=CAREER,
         profile=PROFILE,
@@ -193,7 +195,7 @@ def test_variant_reaches_the_prompt():
     assert "<variant>3</variant>" in turn
 
 
-def test_market_demand_carries_match_status_not_just_demand():
+async def test_market_demand_carries_match_status_not_just_demand():
     """Demand alone would invite the model to treat popularity as evidence. Each
     market skill has to arrive with the matcher's verdict attached."""
     turn = build_user_turn(
@@ -209,14 +211,14 @@ def test_market_demand_carries_match_status_not_just_demand():
     assert "not_verified" in turn  # Kubernetes has no support in this profile
 
 
-def test_system_prompt_is_a_stable_constant():
+async def test_system_prompt_is_a_stable_constant():
     """No per-request interpolation: a formatted system prompt is a new cache
     prefix on every call, and the caching is the point."""
     assert "{" not in resume_generation.SYSTEM_PROMPT
     assert "%s" not in resume_generation.SYSTEM_PROMPT
 
 
-def test_output_schema_stays_structured_output_compatible():
+async def test_output_schema_stays_structured_output_compatible():
     """Structured outputs reject length and numeric constraints outright. A
     `Field(max_length=...)` added to a resume model later would be a 400 on
     every request, and the natural place to discover that is here rather than
@@ -241,7 +243,7 @@ def test_output_schema_stays_structured_output_compatible():
     assert found == []
 
 
-def test_max_tokens_leaves_room_for_thinking_and_a_full_resume():
+async def test_max_tokens_leaves_room_for_thinking_and_a_full_resume():
     """This model thinks by default and max_tokens caps thinking plus response
     together, so a tight cap surfaces as stop_reason=max_tokens and a failed
     request rather than a shorter resume."""
@@ -251,7 +253,7 @@ def test_max_tokens_leaves_room_for_thinking_and_a_full_resume():
 # --- the evidence contract runs before anything is returned ----------------
 
 
-def test_validation_runs_on_model_output(monkeypatch):
+async def test_validation_runs_on_model_output(monkeypatch):
     """The guardrail is not optional or caller-invoked: a fabricated bullet must
     not survive a normal call to generate_resume."""
     fabricated = SAMPLE.model_copy(
@@ -267,27 +269,27 @@ def test_validation_runs_on_model_output(monkeypatch):
         }
     )
     _install_fake_client(monkeypatch, response=_FakeResponse(fabricated))
-    document, dropped, warnings = _generate()
+    document, dropped, warnings = await _generate()
 
     assert document.experience == []
     assert any(d.reason == "unsupported_number" for d in dropped)
     assert any("could not be traced" in w for w in warnings)
 
 
-def test_gap_skill_never_survives_a_generate_call(monkeypatch):
+async def test_gap_skill_never_survives_a_generate_call(monkeypatch):
     leaked = SAMPLE.model_copy(
         update={"skills": [SkillEntry(name="Kubernetes", evidence=["skill_0"])]}
     )
     _install_fake_client(monkeypatch, response=_FakeResponse(leaked))
-    document, dropped, _ = _generate()
+    document, dropped, _ = await _generate()
 
     assert "Kubernetes" not in [s.name for s in document.skills]
     assert dropped
 
 
-def test_clean_output_passes_through_without_warnings(monkeypatch):
+async def test_clean_output_passes_through_without_warnings(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(SAMPLE))
-    document, dropped, warnings = _generate()
+    document, dropped, warnings = await _generate()
 
     assert dropped == []
     assert warnings == []
@@ -297,25 +299,25 @@ def test_clean_output_passes_through_without_warnings(monkeypatch):
 # --- failure modes: every one must raise ResumeGenerationError -------------
 
 
-def test_refusal_raises(monkeypatch):
+async def test_refusal_raises(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(None, stop_reason="refusal"))
     with pytest.raises(ResumeGenerationError):
-        _generate()
+        await _generate()
 
 
-def test_truncated_output_raises(monkeypatch):
+async def test_truncated_output_raises(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(None, stop_reason="max_tokens"))
     with pytest.raises(ResumeGenerationError):
-        _generate()
+        await _generate()
 
 
-def test_missing_parsed_output_raises(monkeypatch):
+async def test_missing_parsed_output_raises(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(None))
     with pytest.raises(ResumeGenerationError):
-        _generate()
+        await _generate()
 
 
-def test_api_status_error_raises_without_leaking_profile_text(monkeypatch):
+async def test_api_status_error_raises_without_leaking_profile_text(monkeypatch):
     """The exception message reaches the logs, so it carries the status code and
     nothing about the student."""
     api_error = anthropic.RateLimitError(
@@ -329,13 +331,13 @@ def test_api_status_error_raises_without_leaking_profile_text(monkeypatch):
 
     secret = AcademicProfile(institution="CONFIDENTIAL ACADEMY", skills=["Python"])
     with pytest.raises(ResumeGenerationError) as excinfo:
-        _generate(profile=secret, market_match=run_match(secret, MARKET))
+        await _generate(profile=secret, market_match=run_match(secret, MARKET))
 
     assert "CONFIDENTIAL" not in str(excinfo.value)
     assert "429" in str(excinfo.value)
 
 
-def test_connection_error_raises(monkeypatch):
+async def test_connection_error_raises(monkeypatch):
     _install_fake_client(
         monkeypatch,
         error=anthropic.APIConnectionError(
@@ -343,10 +345,10 @@ def test_connection_error_raises(monkeypatch):
         ),
     )
     with pytest.raises(ResumeGenerationError):
-        _generate()
+        await _generate()
 
 
-def test_unexpected_error_is_contained(monkeypatch):
+async def test_unexpected_error_is_contained(monkeypatch):
     _install_fake_client(monkeypatch, error=ValueError("boom"))
     with pytest.raises(ResumeGenerationError):
-        _generate()
+        await _generate()

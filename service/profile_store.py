@@ -13,12 +13,14 @@ database too.
 
 from __future__ import annotations
 
+import functools
 import uuid
 from datetime import datetime, timezone
 from typing import Iterable, List, Optional, Tuple
 
 import structlog
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from models.db import get_session
 from models.student import (
@@ -167,3 +169,50 @@ def save_profile(
     finally:
         if owns_session:
             session.close()
+
+
+# --- Async front door ------------------------------------------------------
+# `save_profile` above talks to SQLAlchemy, which is the right thing locally and
+# impossible on Cloudflare Workers (no filesystem database, no threads). The
+# service is deployed to both, so the HTTP layer calls `save_profile_async`
+# instead and this module decides which backend is in play.
+#
+# There is deliberately no abstract base class. A backend is anything with an
+# awaitable `save(record) -> (uuid, courses, attributes)`; `service/d1_store.py`
+# is the only implementation and the protocol is two lines of duck typing.
+
+_backend = None
+
+
+def use_backend(backend) -> None:
+    """Register a non-SQLAlchemy backend. Called once, by the Worker entrypoint.
+
+    Left unset — the local and test case — the SQLAlchemy path below is used.
+    """
+    global _backend
+    _backend = backend
+
+
+async def save_profile_async(
+    profile: AcademicProfile,
+    *,
+    extraction_method: str,
+    model_version: Optional[str] = None,
+) -> Tuple[uuid.UUID, int, int]:
+    """Store a reviewed profile, whichever database this deploy is talking to."""
+    if _backend is not None:
+        record = to_record(
+            profile, extraction_method=extraction_method, model_version=model_version
+        )
+        return await _backend.save(record)
+
+    # `save_profile` is looked up on the module at call time rather than bound
+    # at import, so a test that monkeypatches it still intercepts this path.
+    return await run_in_threadpool(
+        functools.partial(
+            save_profile,
+            profile,
+            extraction_method=extraction_method,
+            model_version=model_version,
+        )
+    )

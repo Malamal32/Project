@@ -113,11 +113,40 @@ const ROLE_INDEX = [
   { display_name: 'Medical Scientist', onet_soc_code: '19-1042.00', key: 'biology_prehealth', alt: ['research associate', 'lab technician'] }
 ];
 
-/** GET /api/roles/search?q= — mock O*NET occupation/alt-title lookup. */
+/**
+ * GET /api/roles/search?q=
+ *
+ * Real O*NET lookup where the service has the index: the pipeline publishes
+ * 1,016 occupations and 57,543 alternate titles to D1, and the deployed Worker
+ * queries both. The alternate titles are the point — they are why "coder" finds
+ * Software Developers.
+ *
+ * Falls back to the small hardcoded ROLE_INDEX below when the service has no
+ * index bound (running locally against SQLite) or is unreachable, so the wizard
+ * still autocompletes.
+ */
 export async function searchRoles(q) {
-  await delay(220);
-  const query = (q || '').trim().toLowerCase();
+  const query = (q || '').trim();
   if (!query) return [];
+
+  try {
+    const response = await fetch(
+      `${TRANSCRIPT_SERVICE_URL}/api/roles/search?q=${encodeURIComponent(query)}`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      if (data.results && data.results.length) return data.results;
+    }
+  } catch (err) {
+    console.warn('role search unavailable, using the local index:', err);
+  }
+
+  return searchRolesLocally(query);
+}
+
+/** The offline/no-index fallback: a short hand-written occupation list. */
+function searchRolesLocally(q) {
+  const query = q.toLowerCase();
   return ROLE_INDEX
     .filter(r => r.display_name.toLowerCase().includes(query) || r.alt.some(a => a.includes(query)))
     .slice(0, 8)
@@ -404,27 +433,49 @@ function toUiProfile(p) {
 }
 
 /**
- * POST /api/transcript/parse
+ * POST /api/transcript/parse-text
  *
- * Sends the PDF to the extraction service, which runs Claude-based extraction
- * with a rule-based fallback. If the service is unreachable, falls back to
- * parsing entirely in the browser (pdf.js text layer + the rule-based mirror in
- * academic-extraction.js) so the flow still works offline — with the same
- * quality the client-side path always had.
+ * Extracts the PDF's text in the browser with pdf.js, then sends only that text
+ * to the service for Claude-based extraction. The file itself never leaves this
+ * machine.
+ *
+ * That ordering is not just a privacy nicety — it is what lets the service run
+ * on Cloudflare Workers at all. Server-side PDF conversion needs MarkItDown,
+ * which has native dependencies Pyodide cannot load; the browser already had a
+ * pdf.js extractor for its offline fallback, so the split moves the one
+ * un-portable step to the side that was already doing it.
+ *
+ * If the service is unreachable we still have the text, so the flow degrades to
+ * the rule-based mirror in academic-extraction.js rather than failing.
  *
  * Returns { success, academic_profile, warnings, review_required,
  * extraction_method }. Nothing is stored by either path: the student reviews
  * every field, and saving is a separate call to /api/student/profile.
  */
 export async function parseTranscript(file) {
+  const { extractText, PdfValidationError } = await import('./academic-extraction.js');
+
+  let text;
   try {
-    const body = new FormData();
-    body.append('file', file, file.name);
-    const response = await fetch(`${TRANSCRIPT_SERVICE_URL}/api/transcript/parse`, { method: 'POST', body });
+    text = await extractText(file);
+  } catch (err) {
+    const message = err instanceof PdfValidationError
+      ? err.message
+      : "We couldn't read this PDF. Please enter your academic information manually.";
+    return { success: false, academic_profile: EMPTY_PROFILE, warnings: [message],
+      review_required: true, extraction_method: 'none' };
+  }
+
+  try {
+    const response = await fetch(`${TRANSCRIPT_SERVICE_URL}/api/transcript/parse-text`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
 
     if (response.status === 413) {
       return { success: false, academic_profile: EMPTY_PROFILE, review_required: true, extraction_method: 'none',
-        warnings: ['That file is larger than the 15 MB upload limit.'] };
+        warnings: ['That document is longer than this service accepts.'] };
     }
     if (!response.ok) throw new Error(`transcript service returned ${response.status}`);
 
@@ -437,24 +488,22 @@ export async function parseTranscript(file) {
       extraction_method: data.extraction_method || 'none'
     };
   } catch (err) {
-    // Network/CORS failure, or no service running. Not a reason to block the
-    // student — degrade to the browser-side extractor.
-    console.warn('transcript service unavailable, parsing in the browser instead:', err);
-    return parseTranscriptInBrowser(file);
+    // Network failure, or no service running. Not a reason to block the
+    // student — we already have the text, so normalize it here instead.
+    console.warn('transcript service unavailable, normalizing in the browser instead:', err);
+    return parseTranscriptInBrowser(text);
   }
 }
 
-/** Client-side fallback: the file never leaves the browser. */
-async function parseTranscriptInBrowser(file) {
-  const { parsePdfFile, PdfValidationError } = await import('./academic-extraction.js');
+/** Client-side fallback: rule-based normalization of already-extracted text. */
+async function parseTranscriptInBrowser(text) {
+  const { normalizeAcademicText } = await import('./academic-extraction.js');
   try {
-    const { profile, warnings } = await parsePdfFile(file);
+    const { profile, warnings } = normalizeAcademicText(text);
     return { success: true, academic_profile: profile, warnings, review_required: true, extraction_method: 'rules' };
   } catch (err) {
-    const message = err instanceof PdfValidationError
-      ? err.message
-      : "We couldn't process this PDF. Please enter your academic information manually.";
-    return { success: false, academic_profile: EMPTY_PROFILE, warnings: [message], review_required: true, extraction_method: 'none' };
+    return { success: false, academic_profile: EMPTY_PROFILE, review_required: true, extraction_method: 'none',
+      warnings: ["We couldn't process this document. Please enter your academic information manually."] };
   }
 }
 

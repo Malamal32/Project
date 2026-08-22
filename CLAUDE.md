@@ -74,6 +74,27 @@ drift. Tests build their database by applying those same `.sql` files, not
 `Base.metadata.create_all()`, so a model change that never reached a migration fails
 in the suite rather than at deploy.
 
+## Deployment
+
+The product runs as a single Python Worker at
+`pathfinder.stellic-pathfinders.workers.dev`:
+
+```sh
+uv run python -m scripts.build_worker
+cd worker && uv run pywrangler deploy
+```
+
+`worker/entry.py` is the only deployment-specific file, and it must stay that
+way: it swaps the profile store to D1 and binds the role-search reader, and
+re-implements no endpoint. Anything else that differs between local and
+deployed is a bug there, not a feature.
+
+Two constraints shape it. **No native dependencies** — MarkItDown and pypdf are
+imported lazily so the modules that need them stay importable on Pyodide, and
+PDF text extraction moves to the browser. **No sync HTTP** — the Anthropic
+clients are `AsyncAnthropic`, which is also why the service layer is async all
+the way down.
+
 ## Before you say you're done
 
 ```sh
@@ -101,6 +122,7 @@ made and what breaks otherwise, not what the next line does. Match that. If you
 change a decision, change the comment that justified it; a stale rationale is worse
 than none, because the next reader will trust it.
 
-Three mocked calls in `frontend/js/services/` stand in for endpoints Phases 4–6 will
-provide (`searchRoles`, `analyzeMarket`, `lookupCourses`). They are marked as mocks
-and listed in `README.md`. Keep that list true.
+Two mocked calls in `frontend/js/services/` stand in for endpoints Phases 4–6 will
+provide (`analyzeMarket`, `lookupCourses`); `searchRoles` is real against D1 on the
+deployed Worker and falls back to a short local list elsewhere. They are marked as
+mocks in the source and listed in `README.md`. Keep that list true.

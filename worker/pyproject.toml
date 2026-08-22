@@ -1,0 +1,36 @@
+[project]
+name = "pathfinder-worker"
+version = "0.1.0"
+description = "Cloudflare Worker deployment of the Pathfinder transcript + resume service"
+# Pyodide's Python. Not the repo's >=3.11 — this is the runtime Workers provide.
+requires-python = ">=3.13"
+
+# A deliberately trimmed subset of the root pyproject. Absent here, and why:
+#   markitdown  — native dependencies; cannot run on Pyodide. The browser
+#                 extracts PDF text with pdf.js instead and posts it to
+#                 /api/transcript/parse-text.
+#   boto3       — R2 is for job postings, which the pipeline writes, not the
+#                 service.
+#   pypdf       — only validates uploads, and the upload endpoint is not served
+#                 here.
+#   typer/tenacity/openpyxl — pipeline-only.
+dependencies = [
+    "fastapi",
+    "anthropic",
+    "pydantic",
+    # `service/` imports the ORM record types from `models/`. Verified to import
+    # and construct an engine under Pyodide, though no engine is ever connected
+    # on the edge — D1 is reached through the binding instead.
+    "sqlalchemy>=2.0",
+    "structlog",
+    # `service/config.py` calls load_dotenv(); with no .env present it is a
+    # no-op, and configuration comes from Worker vars and secrets.
+    "python-dotenv",
+    # FastAPI validates every route signature when the app object is built, so
+    # the multipart upload route needs this even though the Worker routes
+    # around it. Pure Python, and small.
+    "python-multipart",
+]
+
+[dependency-groups]
+dev = ["workers-py", "workers-runtime-sdk"]

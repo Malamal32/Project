@@ -32,7 +32,7 @@ class _FakeResponse:
 
 
 def _install_fake_client(monkeypatch, *, response=None, error=None, capture=None):
-    def parse(**kwargs):
+    async def parse(**kwargs):
         if capture is not None:
             capture.update(kwargs)
         if error is not None:
@@ -62,16 +62,16 @@ SAMPLE = ExtractedProfile(
 # --- enablement ------------------------------------------------------------
 
 
-def test_disabled_without_credentials():
+async def test_disabled_without_credentials():
     assert llm_extraction.is_enabled() is False
 
 
-def test_enabled_with_api_key(monkeypatch):
+async def test_enabled_with_api_key(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     assert llm_extraction.is_enabled() is True
 
 
-def test_disabled_by_kill_switch(monkeypatch):
+async def test_disabled_by_kill_switch(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setattr(llm_extraction, "LLM_EXTRACTION_ENABLED", False)
     assert llm_extraction.is_enabled() is False
@@ -80,10 +80,10 @@ def test_disabled_by_kill_switch(monkeypatch):
 # --- happy path ------------------------------------------------------------
 
 
-def test_maps_model_output_to_academic_profile(monkeypatch):
+async def test_maps_model_output_to_academic_profile(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(SAMPLE))
 
-    profile, warnings = extract_academic_profile("some transcript text")
+    profile, warnings = await extract_academic_profile("some transcript text")
 
     assert profile.institution == "Riverbend State University"
     assert profile.degree_level == "Bachelor's"
@@ -95,20 +95,20 @@ def test_maps_model_output_to_academic_profile(monkeypatch):
     assert warnings == []
 
 
-def test_ids_are_server_assigned_and_nothing_is_pre_approved(monkeypatch):
+async def test_ids_are_server_assigned_and_nothing_is_pre_approved(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(SAMPLE))
 
-    profile, _ = extract_academic_profile("text")
+    profile, _ = await extract_academic_profile("text")
 
     ids = [c.id for c in profile.coursework]
     assert all(ids) and len(set(ids)) == len(ids)
     assert all(c.student_approved is False for c in profile.coursework)
 
 
-def test_missing_fields_produce_warnings_not_values(monkeypatch):
+async def test_missing_fields_produce_warnings_not_values(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(ExtractedProfile()))
 
-    profile, warnings = extract_academic_profile("text")
+    profile, warnings = await extract_academic_profile("text")
 
     assert profile.institution is None
     assert profile.degree is None
@@ -116,13 +116,13 @@ def test_missing_fields_produce_warnings_not_values(monkeypatch):
     assert len(warnings) == 4
 
 
-def test_request_shape(monkeypatch):
+async def test_request_shape(monkeypatch):
     """The system prompt must be cacheable and the document must be delimited
     and clearly framed as data."""
     capture = {}
     _install_fake_client(monkeypatch, response=_FakeResponse(SAMPLE), capture=capture)
 
-    extract_academic_profile("TRANSCRIPT BODY")
+    await extract_academic_profile("TRANSCRIPT BODY")
 
     assert capture["output_format"] is ExtractedProfile
     assert capture["system"][0]["cache_control"] == {"type": "ephemeral"}
@@ -132,7 +132,7 @@ def test_request_shape(monkeypatch):
     assert "untrusted" in llm_extraction.SYSTEM_PROMPT.lower()
 
 
-def test_max_tokens_leaves_room_for_thinking_and_a_long_course_list():
+async def test_max_tokens_leaves_room_for_thinking_and_a_long_course_list():
     """This model thinks by default and `max_tokens` caps thinking plus response
     together, so a tight cap shows up as stop_reason=max_tokens and a silent
     downgrade to regex extraction rather than as an error."""
@@ -142,7 +142,7 @@ def test_max_tokens_leaves_room_for_thinking_and_a_long_course_list():
 # --- sanitization of model output -----------------------------------------
 
 
-def test_sanitizes_and_bounds_model_output(monkeypatch):
+async def test_sanitizes_and_bounds_model_output(monkeypatch):
     noisy = ExtractedProfile(
         institution="  Riverbend\x00   State\n University  ",
         major="X" * 5000,
@@ -154,7 +154,7 @@ def test_sanitizes_and_bounds_model_output(monkeypatch):
     )
     _install_fake_client(monkeypatch, response=_FakeResponse(noisy))
 
-    profile, _ = extract_academic_profile("text")
+    profile, _ = await extract_academic_profile("text")
 
     assert profile.institution == "Riverbend State University"
     assert len(profile.major) <= llm_extraction.MAX_FIELD_CHARS
@@ -164,11 +164,11 @@ def test_sanitizes_and_bounds_model_output(monkeypatch):
     assert profile.skills == ["Python", "SQL"]
 
 
-def test_oversized_document_is_truncated_with_a_warning(monkeypatch):
+async def test_oversized_document_is_truncated_with_a_warning(monkeypatch):
     capture = {}
     _install_fake_client(monkeypatch, response=_FakeResponse(SAMPLE), capture=capture)
 
-    _, warnings = extract_academic_profile("y" * (llm_extraction.MAX_LLM_INPUT_CHARS + 5000))
+    _, warnings = await extract_academic_profile("y" * (llm_extraction.MAX_LLM_INPUT_CHARS + 5000))
 
     assert any("only the first portion" in w for w in warnings)
     assert len(capture["messages"][0]["content"]) < llm_extraction.MAX_LLM_INPUT_CHARS + 1000
@@ -177,25 +177,25 @@ def test_oversized_document_is_truncated_with_a_warning(monkeypatch):
 # --- failure modes: every one must raise LlmExtractionError ----------------
 
 
-def test_refusal_raises(monkeypatch):
+async def test_refusal_raises(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(None, stop_reason="refusal"))
     with pytest.raises(LlmExtractionError):
-        extract_academic_profile("text")
+        await extract_academic_profile("text")
 
 
-def test_truncated_output_raises(monkeypatch):
+async def test_truncated_output_raises(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(None, stop_reason="max_tokens"))
     with pytest.raises(LlmExtractionError):
-        extract_academic_profile("text")
+        await extract_academic_profile("text")
 
 
-def test_missing_parsed_output_raises(monkeypatch):
+async def test_missing_parsed_output_raises(monkeypatch):
     _install_fake_client(monkeypatch, response=_FakeResponse(None))
     with pytest.raises(LlmExtractionError):
-        extract_academic_profile("text")
+        await extract_academic_profile("text")
 
 
-def test_api_status_error_raises_without_leaking_details(monkeypatch):
+async def test_api_status_error_raises_without_leaking_details(monkeypatch):
     api_error = anthropic.RateLimitError(
         "rate limited",
         response=httpx.Response(429, request=httpx.Request("POST", "https://api.anthropic.com/v1/messages")),
@@ -204,22 +204,22 @@ def test_api_status_error_raises_without_leaking_details(monkeypatch):
     _install_fake_client(monkeypatch, error=api_error)
 
     with pytest.raises(LlmExtractionError) as excinfo:
-        extract_academic_profile("SENSITIVE STUDENT TEXT")
+        await extract_academic_profile("SENSITIVE STUDENT TEXT")
 
     assert "SENSITIVE" not in str(excinfo.value)
     assert "429" in str(excinfo.value)
 
 
-def test_connection_error_raises(monkeypatch):
+async def test_connection_error_raises(monkeypatch):
     _install_fake_client(
         monkeypatch,
         error=anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com")),
     )
     with pytest.raises(LlmExtractionError):
-        extract_academic_profile("text")
+        await extract_academic_profile("text")
 
 
-def test_unexpected_error_is_contained(monkeypatch):
+async def test_unexpected_error_is_contained(monkeypatch):
     _install_fake_client(monkeypatch, error=ValueError("boom"))
     with pytest.raises(LlmExtractionError):
-        extract_academic_profile("text")
+        await extract_academic_profile("text")

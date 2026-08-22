@@ -184,7 +184,7 @@ commentary, no notes about what you left out. A tight short resume beats a \
 padded long one."""
 
 
-_client: Optional[anthropic.Anthropic] = None
+_client: Optional[anthropic.AsyncAnthropic] = None
 _client_lock = threading.Lock()
 
 
@@ -199,15 +199,20 @@ def is_enabled() -> bool:
     return RESUME_GENERATION_ENABLED and _credentials_present()
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> anthropic.AsyncAnthropic:
     """Lazy singleton, separate from the extraction stage's client because the
     timeout and retry budgets differ. Building it lazily keeps importing this
-    module side-effect-free when no credentials are configured."""
+    module side-effect-free when no credentials are configured.
+
+    Async, not sync: Cloudflare Python Workers only support async HTTP clients,
+    and this module is shared between the local uvicorn process and the
+    deployed Worker. A sync client would work in exactly one of the two.
+    """
     global _client
     if _client is None:
         with _client_lock:
             if _client is None:
-                _client = anthropic.Anthropic(
+                _client = anthropic.AsyncAnthropic(
                     timeout=RESUME_TIMEOUT_SECONDS,
                     max_retries=RESUME_MAX_RETRIES,
                 )
@@ -279,7 +284,7 @@ def build_user_turn(
     )
 
 
-def generate_resume(
+async def generate_resume(
     *,
     career: ResumeTargetRole,
     profile: AcademicProfile,
@@ -310,7 +315,7 @@ def generate_resume(
     )
 
     try:
-        response = _get_client().messages.parse(
+        response = await _get_client().messages.parse(
             model=RESUME_MODEL,
             max_tokens=RESUME_MAX_TOKENS,
             # Stable prefix: cached across requests, so a "regenerate wording"

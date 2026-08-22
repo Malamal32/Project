@@ -325,6 +325,61 @@ history, and projects. That is the point of the stage, and the kill switch is ho
 you opt out — and the student is told, on the landing screen, at the upload step,
 and again on the last screen before drafting.
 
+## Deploying to Cloudflare (`worker/`)
+
+The whole product runs as a single Python Worker at
+**https://pathfinder.stellic-pathfinders.workers.dev** — the FastAPI service from
+`service/` plus the browser client, on one origin, reading and writing the same
+D1 database the pipeline publishes to.
+
+```sh
+uv run python -m scripts.build_worker      # stage service/ + models/ + frontend/
+cd worker && uv run pywrangler deploy
+```
+
+`scripts/build_worker.py` copies the shared source into `worker/build/` because
+Python Workers bundle from the directory holding `main`, and the Worker needs a
+*trimmed* dependency set — the root `pyproject.toml` includes MarkItDown, boto3,
+and pypdf, none of which run on Pyodide. `worker/build/` is a build artifact and
+is gitignored.
+
+### What differs on the edge, and why
+
+`worker/entry.py` is the only file that is deployment-specific. It swaps two
+things and re-implements nothing:
+
+| | Local | Worker |
+|---|---|---|
+| Profile storage | SQLAlchemy → `data/hiring_db.sqlite3` | `service/d1_store.py` → D1 binding |
+| Role search | unbound; browser falls back to a short local list | real query over 1,016 occupations + 57,543 alt titles in D1 |
+| Transcript → text | MarkItDown, server-side (`POST /api/transcript/parse`) | pdf.js, in the browser (`POST /api/transcript/parse-text`) |
+
+The third row is the interesting one. MarkItDown has native dependencies and
+cannot run on Pyodide, and the browser already shipped a pdf.js extractor for
+its offline fallback — so the deployed app sends *text* rather than a PDF, and
+the file never leaves the student's machine at all. Both endpoints converge on
+the same `_extract`, so the extraction rules and the `extraction_method`
+reporting are identical either way.
+
+Everything else — the evidence contract, the matcher, the prompts — is the same
+code running in both places. If behaviour differs, that is a bug in
+`worker/entry.py`.
+
+### Secrets and size
+
+```sh
+cd worker && npx wrangler secret put ANTHROPIC_API_KEY
+```
+
+Without it the deploy still serves: extraction falls back to rules and resume
+drafting returns `success=False`. Nothing else needs a secret.
+
+The bundle is ~5.2 MiB compressed, which needs **Workers Paid** (10 MiB limit;
+the free tier caps at 3 MiB). `anthropic` and `pydantic_core` are most of it.
+SQLAlchemy accounts for ~1.7 MiB and is dead weight on the edge — `service/`
+imports the ORM record types from `models/`, and splitting the Pydantic halves
+out would drop it.
+
 ## Frontend (`frontend/`)
 
 Pathfinder: the ten-step wizard a student actually uses. Alpine.js, plain ES
@@ -350,15 +405,14 @@ are real, against the endpoints above: transcript parse, profile save, resume
 generate. Three are **mocks**, clearly marked as such, because the endpoint does not
 exist yet:
 
-| Mocked call | Would be | Blocked on |
+| Call | Status | Note |
 |---|---|---|
-| `searchRoles` | `GET /api/roles/search` | a query service over `occupations` / `occupation_alt_titles` |
-| `analyzeMarket` | `POST /api/market/analyze` | Phases 4–6: postings must be classified and their requirements extracted before demand can be computed |
-| `lookupCourses` | `GET /api/courses/lookup` | a course-catalog source, which this repo has no adapter for |
+| `searchRoles` | **real** on the deployed Worker | `GET /api/roles/search` queries the 1,016 occupations and 57,543 alternate titles in D1. Falls back to a short hardcoded list when no index is bound (running locally) or the service is unreachable. |
+| `analyzeMarket` | mocked | `POST /api/market/analyze` needs Phases 4–6: postings must be classified and their requirements extracted before demand can be computed. The market figures the wizard shows are pre-baked sample data. |
+| `lookupCourses` | mocked | `GET /api/courses/lookup` needs a course-catalog source, which this repo has no adapter for. |
 
-The pipeline builds the data the first two need; nothing yet queries it. Each mock
-returns the shape its endpoint will return, so swapping one is a `fetch()` and
-nothing else.
+Each mock returns the shape its endpoint will return, so swapping one is a `fetch()`
+and nothing else — `searchRoles` was exactly that swap.
 
 ### The evidence-id scheme
 

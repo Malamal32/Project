@@ -27,11 +27,11 @@ import structlog
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.concurrency import run_in_threadpool
 
 from service import llm_extraction, profile_store, resume_generation
 from service.config import (
     FRONTEND_DIR,
+    MAX_TRANSCRIPT_TEXT_CHARS,
     LLM_EXTRACTION_ENABLED,
     LLM_MODEL,
     MAX_UPLOAD_BYTES,
@@ -44,12 +44,23 @@ from service.schemas import (
     GenerateResumeRequest,
     GenerateResumeResponse,
     ParseResponse,
+    ParseTextRequest,
     SaveProfileRequest,
     SaveProfileResponse,
 )
-from service.transcript_service import parse_transcript_bytes
+from service.transcript_service import parse_transcript_bytes, parse_transcript_text
 
 log = structlog.get_logger()
+
+# Set by the Worker entrypoint (see `worker/entry.py`). Left None locally, which
+# is what makes /api/roles/search a no-op outside the deployed environment.
+_role_search = None
+
+
+def use_role_search(backend) -> None:
+    """Register the occupation-index reader. Called once, at Worker startup."""
+    global _role_search
+    _role_search = backend
 
 
 @asynccontextmanager
@@ -127,15 +138,27 @@ async def parse_transcript(file: UploadFile = File(...)) -> ParseResponse:
         chunks.append(chunk)
     content = b"".join(chunks)
 
-    # The pipeline is fully synchronous and blocking — pypdf, MarkItDown, and a
-    # multi-second Claude API call. Running it inline would stall the event
-    # loop for every other in-flight request, so it goes to the threadpool.
-    return await run_in_threadpool(
-        parse_transcript_bytes,
+    return await parse_transcript_bytes(
         filename=file.filename or "",
         content_type=file.content_type,
         content=content,
     )
+
+
+@app.post("/api/transcript/parse-text", response_model=ParseResponse)
+async def parse_transcript_from_text(request: ParseTextRequest) -> ParseResponse:
+    """Same extraction, but from text the browser already pulled out of the PDF.
+
+    This is the path the deployed Worker serves: MarkItDown has native
+    dependencies and cannot run there, and the browser already ships a pdf.js
+    extractor for its offline fallback. It is also the *less* exposed of the
+    two — the PDF bytes never leave the student's machine, only its text does.
+
+    Persists nothing, exactly like the upload endpoint.
+    """
+    if len(request.text) > MAX_TRANSCRIPT_TEXT_CHARS:
+        raise HTTPException(status_code=413, detail="Document text too large.")
+    return await parse_transcript_text(request.text)
 
 
 @app.post("/api/student/profile", response_model=SaveProfileResponse)
@@ -148,8 +171,7 @@ async def save_student_profile(request: SaveProfileRequest) -> SaveProfileRespon
     """
     model_version = LLM_MODEL if request.extraction_method == "llm" else None
 
-    profile_id, courses, attributes = await run_in_threadpool(
-        profile_store.save_profile,
+    profile_id, courses, attributes = await profile_store.save_profile_async(
         request.academic_profile,
         extraction_method=request.extraction_method,
         model_version=model_version,
@@ -200,8 +222,7 @@ async def generate_resume(request: GenerateResumeRequest) -> GenerateResumeRespo
     variant = max(0, min(int(request.variant), RESUME_MAX_VARIANT))
 
     try:
-        document, dropped, warnings = await run_in_threadpool(
-            resume_generation.generate_resume,
+        document, dropped, warnings = await resume_generation.generate_resume(
             career=request.career,
             profile=request.academic_profile,
             experience=request.experience,
@@ -235,6 +256,28 @@ async def generate_resume(request: GenerateResumeRequest) -> GenerateResumeRespo
         model_version=RESUME_MODEL,
         variant=variant,
     )
+
+
+@app.get("/api/roles/search")
+async def search_roles(q: str = "") -> dict:
+    """Autocomplete a career target against the O*NET occupation index.
+
+    Real data, but only where a backend is registered: the pipeline publishes
+    `occupations` and `occupation_alt_titles` to D1, and the Worker wires a
+    reader over them at startup. Running locally with no backend this returns
+    an empty list, and the browser falls back to its own mock — the one place
+    the deployed app is *more* real than the local one.
+    """
+    if _role_search is None:
+        return {"results": []}
+    try:
+        return {"results": await _role_search.search(q)}
+    except Exception as exc:
+        # Autocomplete is an assist, not a gate. A missing index (a dev replica
+        # with no tables) or a transient D1 error degrades to the browser's own
+        # short list rather than failing the keystroke.
+        log.warning("roles.search_failed", reason=type(exc).__name__)
+        return {"results": []}
 
 
 @app.get("/health")

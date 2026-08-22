@@ -16,8 +16,11 @@ import io
 import os
 from dataclasses import dataclass
 
-from pypdf import PdfReader
-from pypdf.errors import PdfReadError
+# pypdf is imported inside the function that needs it, not here. Only the
+# multipart upload path validates a PDF, and that path is not served on
+# Cloudflare Workers (where the browser extracts the text instead) — a
+# module-level import would make this module, and everything that imports it,
+# unloadable there. Same reason MarkItDown is lazy in `transcript_service`.
 
 from service.config import ALLOWED_CONTENT_TYPES, ALLOWED_EXTENSION, MAX_UPLOAD_BYTES, PDF_MAGIC_BYTES
 
@@ -59,9 +62,12 @@ def validate_signature(content: bytes) -> None:
         raise PdfValidationError("File does not look like a valid PDF.")
 
 
-def validate_not_encrypted_and_parseable(content: bytes) -> PdfReader:
+def validate_not_encrypted_and_parseable(content: bytes):
     """Also doubles as the malformed-PDF check: PdfReader raising here means
     the file is not a well-formed PDF, independent of the magic-byte check."""
+    from pypdf import PdfReader
+    from pypdf.errors import PdfReadError
+
     try:
         reader = PdfReader(io.BytesIO(content))
     except PdfReadError as exc:

@@ -295,15 +295,28 @@ export function normalizeAcademicText(text) {
 }
 
 /**
- * Full client-side pipeline: validate -> extract text -> normalize.
- * Throws PdfValidationError with a student-facing message on any rejection,
- * including the scanned/image-only case so the UI can fall back to manual entry.
+ * Validate the file and return its text layer. Throws PdfValidationError with a
+ * student-facing message on any rejection, including the scanned/image-only
+ * case so the UI can fall back to manual entry.
+ *
+ * Split out from `parsePdfFile` because the normal path now stops here: the
+ * text goes to the service for Claude-based extraction, and only the offline
+ * fallback continues on to `normalizeAcademicText`. Keeping validation on this
+ * side means a bad file is rejected before anything is uploaded at all.
  */
-export async function parsePdfFile(file) {
+export async function extractText(file) {
   await validatePdf(file);
   const text = await extractPdfText(file);
   if (text.trim().length < MIN_EXTRACTED_CHARS) {
     throw new PdfValidationError('This PDF appears to be a scanned image with no selectable text, so we couldn\'t read it. Please enter your academic information manually.');
   }
-  return normalizeAcademicText(text);
+  return text;
+}
+
+/**
+ * Full client-side pipeline: validate -> extract text -> normalize. Used when
+ * the service is unreachable; `extractText` above is the normal path.
+ */
+export async function parsePdfFile(file) {
+  return normalizeAcademicText(await extractText(file));
 }

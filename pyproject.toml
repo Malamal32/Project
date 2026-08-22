@@ -6,8 +6,12 @@ requires-python = ">=3.11"
 dependencies = [
     "sqlalchemy>=2.0",
     "pydantic>=2.6",
-    # Pinned below 1.0 alongside anthropic — see the comment on that dependency.
-    "httpx>=0.27,<1",
+    # Used by the pipeline collectors (`pipeline/politeness.py`). httpx 2.x ships
+    # as a *separate distribution* named `httpx2`, not as a new major of this
+    # one, so the two install side by side: anthropic pulls `httpx2` and the
+    # collectors keep importing `httpx`. The old `<1` pin assumed a conflict
+    # that the split package name means does not exist.
+    "httpx>=0.27",
     "tenacity>=8.2",
     "typer>=0.12",
     "structlog>=24.1",
@@ -19,10 +23,10 @@ dependencies = [
     "boto3>=1.34",
 
     # --- Transcript extraction service (service/) -----------------------------
-    # Held below 1.0: anthropic 1.x requires httpx 2, which conflicts with the
-    # httpx<1 that Starlette's TestClient (and every collector here) needs. Bump
-    # both together or neither.
-    "anthropic>=0.125,<1",
+    # 1.x, on httpx 2. This is also the version Cloudflare's Python Workers
+    # resolve for the deployed Worker, so local and edge run the same SDK — the
+    # service modules are shared between them and cannot straddle two majors.
+    "anthropic>=1,<2",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     # Multipart upload parsing for POST /api/transcript/parse.
@@ -38,6 +42,10 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    # The service modules are async (Cloudflare Workers only support async HTTP
+    # clients), so their tests are too. `asyncio_mode = "auto"` below means an
+    # `async def test_*` needs no decorator.
+    "pytest-asyncio>=0.24",
     # Builds the synthetic transcript PDFs the service tests run against, so no
     # real student document is ever checked into the repo.
     "reportlab>=4.2",
@@ -47,6 +55,7 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 # This repo's suite lives in tests/. Scoping collection keeps `uv run pytest` from
 # picking up unrelated test files that happen to sit in the working tree.
 testpaths = ["tests"]

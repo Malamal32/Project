@@ -24,6 +24,13 @@ PDF_MAGIC_BYTES = b"%PDF-"
 # strongly suggests a scanned/image-only PDF with no extractable text layer.
 MIN_EXTRACTED_CHARS = 40
 
+# Upper bound on browser-extracted transcript text (POST /api/transcript/parse-text).
+# The upload path is bounded by MAX_UPLOAD_BYTES; this is the equivalent ceiling
+# for the path where the browser did the extraction. Generous enough for a long
+# multi-page transcript, small enough that a single request cannot be used to
+# push arbitrary bulk through the service.
+MAX_TRANSCRIPT_TEXT_CHARS = 400_000
+
 
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.getenv(name)

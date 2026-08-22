@@ -47,6 +47,17 @@ class AcademicProfile(BaseModel):
     certifications: List[str] = Field(default_factory=list)
 
 
+class ParseTextRequest(BaseModel):
+    """Body of POST /api/transcript/parse-text.
+
+    `text` is what the browser's pdf.js extractor read out of the document. It
+    is treated exactly as hostile as an uploaded file: bounded in size, framed
+    as data in the prompt, never logged, never persisted.
+    """
+
+    text: str
+
+
 class ParseResponse(BaseModel):
     success: bool
     academic_profile: AcademicProfile

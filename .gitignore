@@ -27,3 +27,10 @@ data/d1_sync/
 
 node_modules/
 .wrangler/
+
+# Staged Worker bundle — rebuilt by `python -m scripts.build_worker`, and a copy
+# of source that already lives in service/ and models/.
+worker/build/
+worker/python_modules/
+worker/.venv/
+worker/uv.lock

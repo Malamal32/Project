@@ -1,0 +1,1192 @@
+{
+    "wallTime": 610,
+    "cpuTime": 67,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [
+        {
+            "message": [
+                "\u001b[2m2026-08-22 00:36:46\u001b[0m [\u001b[31m\u001b[1merror    \u001b[0m] \u001b[1mservice.extraction_mode       \u001b[0m \u001b[36mmode\u001b[0m=\u001b[35mrules\u001b[0m \u001b[36mreason\u001b[0m=\u001b[35m'LLM extraction is enabled but no ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN is present in the environment — every upload will fall back to regex extraction'\u001b[0m"
+            ],
+            "level": "log",
+            "timestamp": 1787359006457
+        },
+        {
+            "message": [
+                "\u001b[2m2026-08-22 00:36:46\u001b[0m [\u001b[33m\u001b[1mwarning  \u001b[0m] \u001b[1mservice.resume_mode           \u001b[0m \u001b[36mmode\u001b[0m=\u001b[35munavailable\u001b[0m \u001b[36mreason\u001b[0m=\u001b[35m'RESUME_GENERATION_ENABLED is off or no ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN is present — POST /api/resume/generate will return success=False'\u001b[0m"
+            ],
+            "level": "log",
+            "timestamp": 1787359006457
+        }
+    ],
+    "eventTimestamp": 1787359005147,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/api/roles/search?q=software",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce16192c559c",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "user-agent": "curl/8.21.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 61,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "aCJb90RYBXe3Eq+KIn2LFr01KCkO3BaFIZX4tVaRf1o=",
+                "tlsClientCiphersSha1": "hCCNuWP9ky6AR69i97wdKYbhFQo=",
+                "tlsClientExtensionsSha1": "4oF0LRxQXUDhrRY0MazQAVJh7Go=",
+                "tlsClientExtensionsSha1Le": "Ea9swA+X7+AQtmDnJ28MlyPK/Fg=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "fb386fdd7639bee65a0a5b4ab58344e7e092affbe9e2e3831d4184cf6cc231e4612f296fe5b233f942427762d6d7e6b8",
+                    "serverHandshake": "006d266efe69d2e427e864bd2f38c15e3f96cbd0511a3d041515b81096833550837e74bce6fe31f8ed82053262e68940",
+                    "clientFinished": "42de0d3a7eaa255328e0572efda680bbcbed009c10956e15b39a0d7c9296f0585b2bc773c0aaa5a7da8084fe89a1ccee",
+                    "serverFinished": "8c58cfe81e2f9259f575b84f824a089dc5f1f24d9cc3be3298813fe251e3126bc8757469d34c669e7deedb6ef8ee7e9c"
+                },
+                "tlsClientHelloLength": "1593",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 69405
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 235,
+    "cpuTime": 15,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359007284,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce237e1dece8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "user-agent": "curl/8.21.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 62,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "DS89Mf5IAiQwf76vzbFcUyekKp4wtw9QKgrrzvSHpgw=",
+                "tlsClientCiphersSha1": "hCCNuWP9ky6AR69i97wdKYbhFQo=",
+                "tlsClientExtensionsSha1": "4oF0LRxQXUDhrRY0MazQAVJh7Go=",
+                "tlsClientExtensionsSha1Le": "Ea9swA+X7+AQtmDnJ28MlyPK/Fg=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "14e76130406d812a474799e0504dd6aa6ed83bcf191e01b84a1ede51de827b6556ab812dd9c346b55380b16335c59e9c",
+                    "serverHandshake": "bdb6cc1d5aa2dd6ff27d6ed66c3f9c78205ce87f8b55264e43920392abb7026884f79d76984b35499b52358e3bf9df8b",
+                    "clientFinished": "2b840d9e154592183d35e080849854e8ae92bd8c779a41d3dafe394e727a10a3d46d9b6e103a88e8c4c02b13153d2993",
+                    "serverFinished": "94529979ea39e3a679fd25f74cca7993d7397cbdbc01f88c8b4c60a478c825072f6a2332c8f4b82c0799f7a2261d00a6"
+                },
+                "tlsClientHelloLength": "1593",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 70812
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 18,
+    "cpuTime": 17,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [
+        {
+            "message": [
+                "\u001b[2m2026-08-22 00:36:47\u001b[0m [\u001b[31m\u001b[1merror    \u001b[0m] \u001b[1mservice.extraction_mode       \u001b[0m \u001b[36mmode\u001b[0m=\u001b[35mrules\u001b[0m \u001b[36mreason\u001b[0m=\u001b[35m'LLM extraction is enabled but no ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN is present in the environment — every upload will fall back to regex extraction'\u001b[0m"
+            ],
+            "level": "log",
+            "timestamp": 1787359007751
+        },
+        {
+            "message": [
+                "\u001b[2m2026-08-22 00:36:47\u001b[0m [\u001b[33m\u001b[1mwarning  \u001b[0m] \u001b[1mservice.resume_mode           \u001b[0m \u001b[36mmode\u001b[0m=\u001b[35munavailable\u001b[0m \u001b[36mreason\u001b[0m=\u001b[35m'RESUME_GENERATION_ENABLED is off or no ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN is present — POST /api/resume/generate will return success=False'\u001b[0m"
+            ],
+            "level": "log",
+            "timestamp": 1787359007751
+        }
+    ],
+    "eventTimestamp": 1787359007751,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/health",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce266ab32eda",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "user-agent": "curl/8.21.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "requestPriority": "weight=16;exclusive=0;group=0;group-weight=0",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 61,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "8+yFcdrq68wi/saZdbQNl+aaavnna4H6Nmp+OTbOaVE=",
+                "tlsClientCiphersSha1": "hCCNuWP9ky6AR69i97wdKYbhFQo=",
+                "tlsClientExtensionsSha1": "4oF0LRxQXUDhrRY0MazQAVJh7Go=",
+                "tlsClientExtensionsSha1Le": "Ea9swA+X7+AQtmDnJ28MlyPK/Fg=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "9005f4bd7cb742c6b75eef1b6dea0e6d61131ef2d4dde7c28ecd17f8f6fbf61e183cee6a56e044d79f9c5d5235190c86",
+                    "serverHandshake": "10770ac7f7b3762723bb6ad614a22be2542d80a3e782b21bfc7c05f37e982417edaf91de16eede7b99486af72efe7078",
+                    "clientFinished": "bd24e362f1fbafd8bd5811cc49c5252f1fd2aef0a452ce58fe10a0ab531930f9701bd803d49a60bd425a876ee69123ea",
+                    "serverFinished": "772dd75ca5a2169c81442e272730aa5f009d1c117b1df1d8671bd2adc944e55d24aea21751c1144e1729180e8b16088f"
+                },
+                "tlsClientHelloLength": "1593",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 70356
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 5,
+    "cpuTime": 3,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011434,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/",
+            "method": "GET",
+            "headers": {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cache-control": "max-age=0",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3d6d93dba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=0, i",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "document",
+                "sec-fetch-mode": "navigate",
+                "sec-fetch-site": "same-origin",
+                "upgrade-insecure-requests": "1",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=256;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 66,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 152956
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 217,
+    "cpuTime": 4,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011527,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/js/app.js",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3e0fc9dba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "origin": "https://pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=1",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "script",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=220;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 63,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 152956
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 237,
+    "cpuTime": 3,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011527,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/css/app.css",
+            "method": "GET",
+            "headers": {
+                "accept": "text/css,*/*;q=0.1",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3e0fc7dba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=0",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "style",
+                "sec-fetch-mode": "no-cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=256;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 63,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 152956
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 236,
+    "cpuTime": 9,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011821,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/js/services/api-service.js",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3fddfedba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "origin": "https://pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=1",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/js/app.js",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "script",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=220;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 62,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 203467
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 260,
+    "cpuTime": 3,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011821,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/js/services/course-catalog.js",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3fde04dba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "origin": "https://pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=1",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/js/app.js",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "script",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=220;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 62,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 203467
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 259,
+    "cpuTime": 19,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011528,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/vendor/alpine.min.js",
+            "method": "GET",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3e0fcfdba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "script",
+                "sec-fetch-mode": "no-cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=147;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 63,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 152956
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 265,
+    "cpuTime": 4,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359011526,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/css/broadsheet.css",
+            "method": "GET",
+            "headers": {
+                "accept": "text/css,*/*;q=0.1",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce3e0fc4dba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=0",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "style",
+                "sec-fetch-mode": "no-cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=256;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 63,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 152956
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+{
+    "wallTime": 9,
+    "cpuTime": 7,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8e0a70e5-27c7-4323-b7e0-b140a005e276"
+    },
+    "scriptName": "pathfinder",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787359013327,
+    "event": {
+        "request": {
+            "url": "https://pathfinder.stellic-pathfinders.workers.dev/favicon.ico",
+            "method": "GET",
+            "headers": {
+                "accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "accept-encoding": "gzip, br",
+                "accept-language": "en-US,en;q=0.9",
+                "cf-connecting-ip": "186.104.27.162",
+                "cf-ipcountry": "CL",
+                "cf-ray": "a2edce494c60dba8",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "host": "pathfinder.stellic-pathfinders.workers.dev",
+                "priority": "u=1, i",
+                "referer": "https://pathfinder.stellic-pathfinders.workers.dev/",
+                "sec-ch-ua": "\"Chromium\";v=\"151\", \"Not=A?Brand\";v=\"99\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-fetch-dest": "image",
+                "sec-fetch-mode": "no-cors",
+                "sec-fetch-site": "same-origin",
+                "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "186.104.27.162"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/2",
+                "clientAcceptEncoding": "gzip, deflate, br",
+                "requestPriority": "weight=220;exclusive=1",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 61,
+                "clientQuicRtt": 0,
+                "colo": "GIG",
+                "asn": 7418,
+                "asOrganization": "TELEFÓNICA CHILE S.A.",
+                "country": "CL",
+                "isEUCountry": false,
+                "city": "Santiago",
+                "continent": "SA",
+                "region": "Santiago Metropolitan",
+                "regionCode": "RM",
+                "timezone": "America/Santiago",
+                "longitude": "-70.64827",
+                "latitude": "-33.45694",
+                "postalCode": "8320000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES128-GCM-SHA256",
+                "tlsClientRandom": "eM+Tx1ZqWYG6HyxbeyaXKEruWLhderPHH5oc74Q3Fiw=",
+                "tlsClientCiphersSha1": "qUlYa/u1n4QQ0ikv+ReyY9Hq/6I=",
+                "tlsClientExtensionsSha1": "9R+S5F3+2tx49RswPBJ5t+hu4Zs=",
+                "tlsClientExtensionsSha1Le": "HF75rfiIPZzdfxVNmwPL3RAGKpc=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "2ae908a8821bd1a7c8e0c45d635f81b8fd1353423e853dca43c2d52675279f92",
+                    "serverHandshake": "69befea33acc0abd7f25ee53161649a3e20bb484d1edddf651a2a78160cac441",
+                    "clientFinished": "bf6be3420137c8768a52653d2e69e7584e5bcddd44f6995f8cd73e233eaf8b49",
+                    "serverFinished": "3b1b0099d5056932d0bd63115a4068fb37014b93afad61b4c723bf83877bb57a"
+                },
+                "tlsClientHelloLength": "1845",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 650865
+                }
+            }
+        },
+        "response": {
+            "status": 404
+        }
+    }
+}
