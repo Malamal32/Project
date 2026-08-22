@@ -197,12 +197,13 @@ SERVE_FRONTEND=true uv run uvicorn service.app:app --reload --port 8000
 | Endpoint | Does |
 |---|---|
 | `POST /api/transcript/parse` | PDF upload → validated → text → structured `AcademicProfile`. **Stores nothing.** |
+| `POST /api/linkedin/import` | A student's own LinkedIn export → reviewable work history. No model call. **Stores nothing.** |
 | `POST /api/student/profile` | Stores a profile the student has reviewed. The only write path. |
 | `POST /api/resume/generate` | Reviewed profile + market demand → a tailored resume. **Stores nothing.** |
 | `GET /health` | Liveness. |
 
-All three are live from the browser client — `frontend/` calls exactly these and
-nothing else reaches the network.
+All of these are live from the browser client — `frontend/` calls exactly these
+and nothing else reaches the network.
 
 This is a long-running service, not a pipeline stage, which is why it lives
 outside `pipeline/`. No pipeline stage imports it, so the pipeline still runs
@@ -240,8 +241,71 @@ comes back null with a student-facing warning, and `review_required` is always
   size, encryption, and parseability are all checked before any converter runs,
   and the document text is delimited and framed as data in the prompt so a
   transcript cannot issue instructions to the model.
+- A LinkedIn export is opened in the browser and only five named CSVs are sent;
+  connections and messages are never decompressed, never uploaded, never logged,
+  and no model sees any of it. See *LinkedIn import* below.
 - Only `POST /api/student/profile` writes, and only the structured fields the
   student reviewed.
+
+### LinkedIn import (`service/linkedin_import.py`)
+
+Work experience is the one resume section this product had no source for — a
+transcript does not contain it, so `models/student.py` does not store it and it
+exists only for the lifetime of a resume request. The import gives that section a
+source without changing that: imported entries become ordinary, editable rows in
+the wizard, and nothing about them is persisted.
+
+**It reads the student's own data export, not the LinkedIn API.** Sign In with
+LinkedIn (OIDC) returns a name, an email and a picture — no positions. Profile
+positions sit behind the LinkedIn Partner Programs, gated on an approved business
+relationship this product does not have, and scraping a profile violates the user
+agreement and is the exact behaviour `pipeline/allowlist.py` forbids on the supply
+side. "Settings → Get a copy of your data" is consented, already structured, and
+needs no key. The cost is latency: LinkedIn takes minutes to hours to build the
+archive, which is why the import is an optional affordance on the experience step
+and never blocks the wizard.
+
+**The browser opens the archive.** `frontend/js/services/linkedin-import.js`
+parses the `.zip` in the tab with `DecompressionStream('deflate-raw')` — no zip
+library, nothing added to `frontend/vendor` — and posts only these members:
+
+| Member | Becomes |
+|---|---|
+| `Positions.csv` | Experience rows (title, organization, location, dates, description) |
+| `Projects.csv` | Project rows (name, url, dates, description) |
+| `Skills.csv`, `Certifications.csv`, `Honors.csv` | Merged into the academic lists on the review screen |
+
+Everything else — `Connections.csv`, `messages.csv`, ad-targeting segments,
+inferred attributes — is never decompressed and never leaves the machine. That is
+the same split `/api/transcript/parse-text` makes, for a stronger reason: an
+archive holds *other people's* personal data, and uploading it whole so a server
+could pick five files out of it would put all of it on the wire to save eighty
+lines of client code.
+
+The whitelist is deliberately duplicated (browser and server) because one filename
+list standing between that data and an HTTP request is a single point of failure.
+`tests/test_linkedin_parity.py` runs the browser reader under node against an
+archive built by Python's `zipfile` and fails if the two lists drift — it also
+covers the hand-rolled zip parsing, which is ours and therefore worth testing
+against an implementation that had no part in writing it.
+
+**No model, and no fallback.** These are CSV columns, not prose; an extractor in
+front of them could only introduce a reading that differs from what the student
+wrote. Column names are matched against a list of known spellings because the
+archive's headers have changed between vintages, and a header matching none of
+them is reported rather than guessed at. There is no offline mirror either — an
+import that cannot reach the service leaves the student in front of the form they
+would have typed into anyway, so it says so and stops.
+
+Values arrive verbatim: `"Jun 2025"` stays `"Jun 2025"`, and start/end are
+separate fields all the way to the wizard's own two inputs. A blank `Finished On`
+is read as "Present" in the browser, where the form's label already says so.
+
+One thing it does not do: `student_profiles.extraction_method` still describes how
+the *academic* fields were produced, so skills and honors that arrived by import
+inherit whatever the transcript path recorded. That is the same gap catalog-derived
+skills already have; giving attributes their own provenance is a schema change, not
+a patch to this stage.
 
 ### Stored profiles
 
@@ -400,10 +464,10 @@ the API's.
 
 ### What is live and what is still a mock
 
-`frontend/js/services/api-service.js` is the only door to the network. Three calls
-are real, against the endpoints above: transcript parse, profile save, resume
-generate. Three are **mocks**, clearly marked as such, because the endpoint does not
-exist yet:
+`frontend/js/services/api-service.js` is the only door to the network. Four calls
+are real, against the endpoints above: transcript parse, LinkedIn import, profile
+save, resume generate. Three are **mocks**, clearly marked as such, because the
+endpoint does not exist yet:
 
 | Call | Status | Note |
 |---|---|---|
@@ -439,7 +503,15 @@ client-supplied match. Both mirrors must move in step with the module they copy.
 
 There is deliberately **no browser-side fallback for resume generation**. A template
 summary is fluent, specific, unverifiable, and lands on the student in an interview
-— so an outage says so instead.
+— so an outage says so instead. `importLinkedInExport` has none either, for a
+different reason: parsing the CSVs in the tab would be a third module to keep in
+step with a Python one, and an import that cannot reach the service costs the
+student nothing but the click.
+
+`WANTED_FILES` in `linkedin-import.js` and `EXPORT_FILES` in
+`service/linkedin_import.py` are a third pair that must move together, but they are
+a shared constant rather than duplicated logic — and the duplication is the point,
+not an accident. `tests/test_linkedin_parity.py` fails if they drift.
 
 ## Adding a new source adapter
 

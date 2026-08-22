@@ -4,15 +4,19 @@ Three endpoints do the work, and the split between them is the privacy boundary:
 
     POST /api/transcript/parse   reads an uploaded PDF and returns structured
                                  fields, storing nothing
+    POST /api/linkedin/import    reads a student's own LinkedIn export and
+                                 returns reviewable work history, storing nothing
     POST /api/student/profile    stores fields the student has reviewed — the
                                  only write in the service
     POST /api/resume/generate    drafts a resume from a reviewed profile plus
                                  hiring demand, storing nothing
+    POST /api/description/polish rewrites one typed experience or project
+                                 description into resume lines, storing nothing
 
 A transcript can never reach the database without a student explicitly sending
 it back. `GET /health` is liveness only.
 
-`frontend/` is the browser client for these three. With SERVE_FRONTEND set it
+`frontend/` is the browser client for these. With SERVE_FRONTEND set it
 is served from this app, which puts it on the same origin and takes CORS out of
 the picture entirely; otherwise serve it however you like and list its origin in
 PATHFINDER_ALLOWED_ORIGINS.
@@ -28,13 +32,23 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from service import llm_extraction, profile_store, resume_generation
+from service import (
+    description_polish,
+    linkedin_import,
+    llm_extraction,
+    profile_store,
+    resume_generation,
+)
 from service.config import (
     FRONTEND_DIR,
+    MAX_LINKEDIN_FILES,
+    MAX_LINKEDIN_IMPORT_CHARS,
+    MAX_POLISH_INPUT_CHARS,
     MAX_TRANSCRIPT_TEXT_CHARS,
     LLM_EXTRACTION_ENABLED,
     LLM_MODEL,
     MAX_UPLOAD_BYTES,
+    POLISH_MODEL,
     RESUME_MAX_VARIANT,
     RESUME_MODEL,
     SERVE_FRONTEND,
@@ -43,8 +57,12 @@ from service.resume_evidence import run_match
 from service.schemas import (
     GenerateResumeRequest,
     GenerateResumeResponse,
+    LinkedInImportRequest,
+    LinkedInImportResponse,
     ParseResponse,
     ParseTextRequest,
+    PolishDescriptionRequest,
+    PolishDescriptionResponse,
     SaveProfileRequest,
     SaveProfileResponse,
 )
@@ -94,6 +112,21 @@ async def lifespan(_: FastAPI):
                 "RESUME_GENERATION_ENABLED is off or no ANTHROPIC_API_KEY/"
                 "ANTHROPIC_AUTH_TOKEN is present — POST /api/resume/generate will "
                 "return success=False"
+            ),
+        )
+
+    # Same reasoning as the resume stage, and the same absence of a fallback:
+    # off means the Polish button reports itself unavailable and the student
+    # keeps their own wording.
+    if description_polish.is_enabled():
+        log.info("service.polish_mode", mode="llm", model=POLISH_MODEL)
+    else:
+        log.warning(
+            "service.polish_mode",
+            mode="unavailable",
+            reason=(
+                "POLISH_ENABLED is off or no ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN "
+                "is present — POST /api/description/polish will return success=False"
             ),
         )
     yield
@@ -159,6 +192,34 @@ async def parse_transcript_from_text(request: ParseTextRequest) -> ParseResponse
     if len(request.text) > MAX_TRANSCRIPT_TEXT_CHARS:
         raise HTTPException(status_code=413, detail="Document text too large.")
     return await parse_transcript_text(request.text)
+
+
+@app.post("/api/linkedin/import", response_model=LinkedInImportResponse)
+async def import_linkedin_export(request: LinkedInImportRequest) -> LinkedInImportResponse:
+    """Read work history out of a student's own LinkedIn data export.
+
+    The browser opens the archive and posts only the members this import reads
+    (`frontend/js/services/linkedin-import.js`); the zip itself, and the
+    connections and messages inside it, never leave the student's machine. The
+    whitelist is enforced again here — see `service/linkedin_import.py` on why
+    that check is deliberately duplicated rather than trusted once.
+
+    Persists nothing and calls no model. Every record comes back
+    `review_required=True` and becomes an editable row in the wizard; getting it
+    into a resume is still the separate /api/resume/generate call, and getting
+    the skills and honors into the database is still /api/student/profile.
+    """
+    if len(request.files) > MAX_LINKEDIN_FILES:
+        raise HTTPException(status_code=413, detail="Too many files in one import.")
+
+    total = sum(len(text) for text in request.files.values())
+    if total > MAX_LINKEDIN_IMPORT_CHARS:
+        raise HTTPException(status_code=413, detail="Import is larger than this service accepts.")
+
+    # Synchronous and pure, but cheap: stdlib CSV over a few kilobytes, with the
+    # row and field counts bounded above. Nothing here is worth a threadpool
+    # hop, and the Worker does not have one to hop to.
+    return linkedin_import.parse_export(request.files)
 
 
 @app.post("/api/student/profile", response_model=SaveProfileResponse)
@@ -255,6 +316,73 @@ async def generate_resume(request: GenerateResumeRequest) -> GenerateResumeRespo
         warnings=warnings,
         model_version=RESUME_MODEL,
         variant=variant,
+    )
+
+
+@app.post("/api/description/polish", response_model=PolishDescriptionResponse)
+async def polish_description(request: PolishDescriptionRequest) -> PolishDescriptionResponse:
+    """Rewrite one experience or project description into resume lines.
+
+    Persists nothing: one description arrives, one comes back, and the student's
+    browser decides whether to keep it. The result is handed back into the same
+    textarea they typed in, so nothing here is asserted on their behalf — they
+    read it, edit it, or undo it first.
+
+    Always returns HTTP 200, and `description` is `""` on every failure path.
+    The browser assigns only when both `success` and `description` are truthy,
+    which is what makes it impossible for this endpoint to blank what they
+    typed.
+    """
+    item = request.experience if request.kind == "experience" else request.project
+
+    # Checked before the enablement gate so an oversize description gets the
+    # advice that fixes it rather than "temporarily unavailable". A 413 would be
+    # the other convention, but it would take the browser's generic
+    # network-error path and lose this string.
+    if len(item.description) > MAX_POLISH_INPUT_CHARS:
+        return PolishDescriptionResponse(
+            success=False,
+            warnings=[
+                "That description is longer than this step accepts — trim it and try again."
+            ],
+        )
+
+    if not description_polish.is_enabled():
+        log.warning("polish.unavailable", reason="stage disabled or no credentials")
+        return PolishDescriptionResponse(
+            success=False,
+            warnings=[
+                "Polishing is unavailable right now. Your text is unchanged — please "
+                "try again shortly."
+            ],
+        )
+
+    try:
+        description, warnings = await description_polish.polish_description(
+            kind=request.kind, item=item
+        )
+    except description_polish.DescriptionPolishRejected as exc:
+        # This message was written for the student, about their own text or the
+        # rewrite of it, and carries no API detail. Caught before the base class
+        # because it is the one whose message may be shown.
+        log.info("polish.rejected", kind=request.kind)
+        return PolishDescriptionResponse(success=False, warnings=[str(exc)])
+    except description_polish.DescriptionPolishError as exc:
+        # Reason only — never the student's text or the model's output.
+        log.warning("polish.failed", reason=str(exc))
+        return PolishDescriptionResponse(
+            success=False,
+            warnings=[
+                "We couldn't polish that just now. Your text is unchanged — please "
+                "try again."
+            ],
+        )
+
+    return PolishDescriptionResponse(
+        success=True,
+        description=description,
+        warnings=warnings,
+        model_version=POLISH_MODEL,
     )
 
 

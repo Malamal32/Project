@@ -1,5 +1,5 @@
 /* Broadsheet — design-system tokens and component classes. This file is the source of truth for the system's look; retune it here and see readme.md. */
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Nunito:wght@800&display=swap');
 
 :root {
   --color-bg: #f3f2f2;
@@ -49,9 +49,21 @@
      never take it. */
   --color-process-yellow: #edbb00;
 
+  /* Brand marks. These three are the logo's own colors, not interface roles:
+     they are fixed values that must not drift when the tonal ramps above are
+     retuned, because the wordmark has to keep matching the cap in
+     `img/coursefolio-mark.svg` (which carries the same hexes, hard-coded — an
+     SVG loaded through <img> cannot see these variables). Nothing but the
+     logo lockup may take them. */
+  --color-brand-navy: #14305e;
+  --color-brand-teal: #12a3a0;
+  --color-brand-spark: #ff7a59;
+
   --font-heading: "Source Serif 4", system-ui, sans-serif;
   --font-heading-weight: 600;
   --font-body: "Source Serif 4", system-ui, sans-serif;
+  /* The wordmark's rounded geometric sans — the one place the serif is wrong. */
+  --font-brand: "Nunito", ui-rounded, "Segoe UI", system-ui, sans-serif;
 
   --space-1: 5.0px;
   --space-2: 10.0px;
@@ -223,8 +235,22 @@ textarea.input { min-height: 90px; resize: vertical; }
   border-bottom: none;
 }
 .nav-brand {
-  font-family: var(--font-heading); font-weight: var(--font-heading-weight);
-  font-size: 18px; margin-right: auto;
+  display: flex; align-items: center; gap: 9px;
+  margin-right: auto;
+  font-family: var(--font-brand); font-weight: 800;
+  font-size: 22px; letter-spacing: -0.01em; line-height: 1;
+  color: var(--color-brand-navy);
+}
+.nav-brand img { display: block; width: 30px; height: 30px; }
+.nav-brand .brand-folio { color: var(--color-brand-teal); }
+/* The wordmark's tittle is orange while the rest of the letter stays teal, so
+   the letter is set dotless (U+0131) and the dot drawn back on. Sized in em so
+   it tracks the font-size above. */
+.nav-brand .brand-i { position: relative; }
+.nav-brand .brand-i::after {
+  content: ''; position: absolute; left: 50%; top: -0.05em;
+  width: 0.2em; height: 0.2em; margin-left: -0.1em;
+  border-radius: 50%; background: var(--color-brand-spark);
 }
 .nav a { color: inherit; text-decoration: none; font-size: 14px; }
 .nav a:hover, .nav a[aria-current='page'] { color: var(--color-accent); }

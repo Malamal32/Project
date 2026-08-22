@@ -23,7 +23,6 @@ It checks that the claim is traceable, not that it is well written.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -55,6 +54,7 @@ from service.schemas import (
     ResumeProject,
     SkillEntry,
 )
+from service.text_guards import unsupported_numbers
 
 log = structlog.get_logger()
 
@@ -248,30 +248,6 @@ def run_match(
     )
 
 
-# Matches integers, decimals, and percentages. Deliberately loose on what
-# precedes/follows so "40%", "3.72", and "200+" all get caught and checked.
-_NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
-
-
-def _unsupported_numbers(text: str, evidence_text: str) -> List[str]:
-    """Return figures in `text` that do not appear in the cited evidence.
-
-    This is the check that catches the most damaging class of fabrication. A
-    model given "helped optimize the checkout flow" will readily produce
-    "optimized checkout flow, cutting load time 40%" — plausible, well-phrased,
-    and completely invented. The id-resolution checks cannot catch it, because
-    the bullet legitimately cites the experience it embellished.
-
-    Matched as substrings of the evidence, not as whole tokens: "3" should count
-    as supported when the evidence says "3 credits", and "3.72" when it says
-    "3.72/4.00".
-    """
-    found = _NUMBER.findall(text)
-    if not found:
-        return []
-    return [n for n in found if n not in evidence_text]
-
-
 class _Validator:
     """Holds the per-request lookups so each check reads as one condition.
 
@@ -407,7 +383,7 @@ class _Validator:
         if not self._check_gap_leak(section, text, evidence):
             return False
 
-        unsupported = _unsupported_numbers(text, self._evidence_text(evidence))
+        unsupported = unsupported_numbers(text, self._evidence_text(evidence))
         if unsupported:
             self._drop(
                 section,

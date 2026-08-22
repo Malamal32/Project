@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pathfinder — Stellic Pathfinders Challenge</title>
+<link rel="icon" href="img/coursefolio-mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/broadsheet.css">
 <link rel="stylesheet" href="css/app.css">
 <!-- app.js registers the Alpine component; it must run before Alpine boots,
@@ -16,7 +17,10 @@
 <div x-data="pathfinder" x-cloak style="min-height:100vh;display:flex;flex-direction:column;font-family:var(--font-body);color:var(--color-text)">
 
   <nav class="nav" data-app-chrome="true">
-    <span class="nav-brand">Pathfinder</span>
+    <!-- The cap is decorative: the wordmark beside it is real text, so alt=""
+         keeps a screen reader from announcing the brand twice. -->
+    <span class="nav-brand"><img src="img/coursefolio-mark.svg" alt="" width="30" height="30"
+      ><span>Course<span class="brand-folio">fol<span class="brand-i">&#x131;</span>o</span></span></span>
     <template x-if="showProgress">
       <span style="margin-left:auto;font-size:13px;opacity:0.65;white-space:nowrap" x-text="stepLabel"></span>
     </template>
@@ -45,7 +49,7 @@
         </div>
       </div>
       <button type="button" class="btn btn-primary" style="font-size:16px;padding:14px 28px" @click="goStart()">Start my resume</button>
-      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:56ch">No account required, and nothing is restored if you close or refresh this tab. Three steps do leave your browser: your transcript is read by our extraction service, the academic record you approve is saved, and drafting your resume sends that record along with the experience and projects you enter. Each of those uses an AI model to read or write text. We'll say so again at each step.</p>
+      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:56ch">No account required, and nothing is restored if you close or refresh this tab. Four steps do leave your browser: your transcript is read by our extraction service, a LinkedIn export you choose to import has its work history read, the academic record you approve is saved, and drafting your resume sends that record along with the experience and projects you enter. All but the LinkedIn import use an AI model to read or write text. We'll say so again at each step.</p>
     </section>
 
     <!-- ── 1. Career Target ──────────────────────────────────────────── -->
@@ -211,6 +215,28 @@
     <section x-show="step === 5" data-screen-label="Experience">
       <h2 :style="stepHeadStyle">Work experience</h2>
       <p :style="stepSubStyle">Internships, jobs, research, on-campus roles — anything with dates and a takeaway. Optional.</p>
+
+      <!-- Import first, then the form. The imported rows land in the same
+           editable cards below, so this is a faster way to fill them in — not a
+           separate, more-trusted source. -->
+      <label class="card elev-sm" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer;border:1.5px dashed var(--color-accent-300);background:var(--color-accent-100);margin-bottom:var(--space-4)">
+        <input type="file" accept=".zip,.csv,application/zip,text/csv" style="position:absolute;width:1px;height:1px;opacity:0" @change="handleLinkedInImport($event)" />
+        <div x-show="linkedinBusy" style="width:34px;height:34px;flex-shrink:0;border-radius:50%;border:3px solid var(--color-accent-100);border-top-color:var(--color-accent);border-right-color:var(--color-accent-2-300);animation:spin 0.9s linear infinite"></div>
+        <div x-show="!linkedinBusy" style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--color-surface);display:flex;align-items:center;justify-content:center">
+          <svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" style="color:var(--color-accent-700)"><path d="M216,24H40A16,16,0,0,0,24,40V216a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V40A16,16,0,0,0,216,24Zm0,192H40V40H216V216ZM96,112v64a8,8,0,0,1-16,0V112a8,8,0,0,1,16,0Zm88,28v36a8,8,0,0,1-16,0V140a20,20,0,0,0-40,0v36a8,8,0,0,1-16,0V112a8,8,0,0,1,15.79-1.78A36,36,0,0,1,184,140ZM100,84A12,12,0,1,1,88,72,12,12,0,0,1,100,84Z"/></svg>
+        </div>
+        <span style="display:grid;gap:2px">
+          <span style="font-weight:600" x-text="linkedinPrompt"></span>
+          <span style="font-size:13px;opacity:0.6" x-text="linkedinSub"></span>
+        </span>
+      </label>
+      <div x-show="hasLinkedinWarnings" style="margin:0 0 var(--space-4);display:grid;gap:var(--space-2)">
+        <template x-for="(w, i) in linkedinWarnings" :key="i">
+          <p style="margin:0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="w"></p>
+        </template>
+      </div>
+      <p style="margin:0 0 var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">Your browser opens the archive itself. Only your positions, projects, skills, certifications and honors are sent — your connections and messages are never read, never uploaded, and nothing is stored. No AI model reads any of it. Everything imported appears below, and on the skills screen, for you to edit or delete.</p>
+
       <template x-for="(exp, idx) in experience" :key="exp.id">
         <div class="card elev-sm" style="margin-bottom:var(--space-4)">
           <div data-grid-2col="true" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)">

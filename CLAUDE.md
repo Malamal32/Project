@@ -54,6 +54,15 @@ Defined once in `collectProfileItems` (`frontend/js/services/api-service.js`);
 `tests/test_evidence_id_parity.py` runs the real browser code under node and fails if
 the two drift. If they drift, every skill claim is dropped silently.
 
+**The LinkedIn whitelist.** `WANTED_FILES` in
+`frontend/js/services/linkedin-import.js` decides which archive members leave the
+student's machine; `EXPORT_FILES` in `service/linkedin_import.py` decides which
+get parsed on arrival. Duplicated on purpose — one filename list standing between
+a LinkedIn archive's messages and an HTTP request is a single point of failure —
+but only useful while they agree. `tests/test_linkedin_parity.py` fails if they
+drift. Never add a file to one without the other, and never add one at all
+without asking whose data is in it.
+
 **The matcher mirrors.** `frontend/js/services/api-service.js` mirrors
 `service/market_matching.py` (display only — the server always recomputes), and
 `frontend/js/services/academic-extraction.js` mirrors
@@ -101,9 +110,10 @@ the way down.
 uv run pytest
 ```
 
-Green means 243 passed, 1 xfailed. The suite needs no network and no database
-service. One test shells out to `node` and skips without it — if you changed
-anything in `frontend/js/services/`, make sure it actually ran.
+Green means 278 passed, 1 xfailed. The suite needs no network and no database
+service. Two tests shell out to `node` and skip without it
+(`test_evidence_id_parity.py`, `test_linkedin_parity.py`) — if you changed
+anything in `frontend/js/services/`, make sure they actually ran.
 
 To see the whole product end to end:
 

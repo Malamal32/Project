@@ -4,6 +4,7 @@
 //
 // Live — served by service/app.py (see README "Transcript extraction service"):
 //   POST /api/transcript/parse   -> parseTranscript(file)
+//   POST /api/linkedin/import    -> importLinkedInExport(file)
 //   POST /api/student/profile    -> saveStudentProfile(profile, method)
 //   POST /api/resume/generate    -> generateResume({...})
 //
@@ -511,6 +512,122 @@ async function parseTranscriptInBrowser(text) {
     return { success: false, academic_profile: EMPTY_PROFILE, review_required: true, extraction_method: 'none',
       warnings: ["We couldn't process this document. Please enter your academic information manually."] };
   }
+}
+
+/**
+ * POST /api/linkedin/import
+ *
+ * Opens the student's LinkedIn export in the browser and sends only the five
+ * CSVs the importer reads. The archive — connections, messages, ad-targeting
+ * data, everything else in it — never leaves this machine. See
+ * `linkedin-import.js` for the reader and `service/linkedin_import.py` for why
+ * this reads an export rather than calling the LinkedIn API.
+ *
+ * There is no offline fallback, deliberately, and it is not the resume
+ * generator's reason. Parsing the CSVs here would be a fourth thing to keep in
+ * step with a Python module for no gain: an import that cannot reach the
+ * service leaves the student exactly where they were, in front of the form they
+ * would have typed into anyway. So this reports the outage and stops.
+ *
+ * `onPhase` is called with 'reading' then 'importing'. Reading a large archive
+ * is the slow half here — the request itself is a few kilobytes of CSV and no
+ * model call at all.
+ *
+ * Returns `{ success, experience, projects, skills, certifications, honors,
+ * filesRead, warnings }`, with experience and projects already in the wizard's
+ * row shape but *without* ids — `app.js` mints those, because it owns the id
+ * space the resume request cites.
+ */
+export async function importLinkedInExport(file, { onPhase = () => {} } = {}) {
+  const { readExport, LinkedInImportError } = await import('./linkedin-import.js');
+
+  let files;
+  try {
+    onPhase('reading');
+    ({ files } = await readExport(file));
+  } catch (err) {
+    return emptyImport(err instanceof LinkedInImportError
+      ? err.message
+      : "We couldn't open that file. Please pick the .zip LinkedIn sent you.");
+  }
+
+  if (!Object.keys(files).length) {
+    return emptyImport(
+      "That archive didn't contain any of the files we can read. Make sure you " +
+      'requested the full export, not just your profile PDF.'
+    );
+  }
+
+  try {
+    onPhase('importing');
+    const response = await fetch(`${TRANSCRIPT_SERVICE_URL}/api/linkedin/import`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ files })
+    });
+    if (response.status === 413) {
+      return emptyImport('That export is larger than this service accepts.');
+    }
+    if (!response.ok) throw new Error(`import service returned ${response.status}`);
+    return toUiImport(await response.json());
+  } catch (err) {
+    // Reason only — never the archive's contents.
+    console.warn('linkedin import service unavailable:', err);
+    return emptyImport(
+      "We couldn't reach the import service. You can add your experience below instead."
+    );
+  }
+}
+
+function emptyImport(warning) {
+  return {
+    success: false, experience: [], projects: [], skills: [], certifications: [],
+    honors: [], filesRead: [], warnings: [warning]
+  };
+}
+
+/** The import response in the shapes the wizard's own rows use. The reverse of
+ *  what `generateResume` does on the way out, and the same division of labour
+ *  as `toUiProfile`: this module is the only place that knows both. */
+function toUiImport(data) {
+  const dates = (row) => ({
+    start: row.started_on || '',
+    // A blank Finished On in the archive is LinkedIn's way of saying "current",
+    // which is what the form's own "End date (or Present)" label asks for. This
+    // is reading the field, not inventing one — and the student can overwrite it
+    // on the screen it lands on.
+    end: row.finished_on || (row.started_on ? 'Present' : '')
+  });
+
+  return {
+    success: data.success !== false,
+    experience: (data.experience || []).map(e => ({
+      employer: e.organization || '',
+      role: e.title || '',
+      ...dates(e),
+      description: e.description || ''
+    })),
+    projects: (data.projects || []).map(p => ({
+      name: p.name || '',
+      // The archive has no technologies column. Left blank rather than guessed
+      // at from the description — see ImportedProject in service/schemas.py.
+      tech: '',
+      link: p.url || '',
+      description: p.description || ''
+    })),
+    skills: data.skills || [],
+    certifications: data.certifications || [],
+    honors: data.honors || [],
+    filesRead: data.files_read || [],
+    // The server reports skipped files with a reason; the student only needs the
+    // ones that were supposed to work and didn't.
+    warnings: [
+      ...(data.warnings || []),
+      ...(data.files_ignored || [])
+        .filter(f => f.reason !== 'not one of the files this import reads')
+        .map(f => `We couldn't read ${f.name}: it ${f.reason}.`)
+    ]
+  };
 }
 
 /**

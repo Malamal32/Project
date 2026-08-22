@@ -13,10 +13,13 @@
 //     extraction service, which sends that text to the Anthropic API (the file
 //     itself never leaves the tab; falls back to in-browser rule-based parsing
 //     of the same text when the service is unreachable);
+//   - importing a LinkedIn export opens the .zip here and POSTs only the five
+//     CSVs the importer reads — no model call, and the archive's connections
+//     and messages never leave the tab;
 //   - continuing past the review step saves the reviewed profile to the
 //     database — the only write in the whole flow;
-//   - generating a resume sends that profile plus the typed-in experience and
-//     projects to the service, which sends them to the Anthropic API.
+//   - generating a resume sends that profile plus the experience and projects
+//     (typed or imported) to the service, which sends them to the Anthropic API.
 //
 // Nothing else does. If you add a call, add it to that list and to the
 // disclosure copy in index.html.
@@ -92,6 +95,11 @@ function freshState() {
     academicDrafts: { coursework: '', skills: '', certifications: '', honors: '' },
     experience: [],
     projects: [],
+    linkedinStatus: 'idle',
+    linkedinWarnings: [],
+    // What the last import actually drew from, so the student can see whether
+    // the thin result was the archive or us. Null until one has run.
+    linkedinSummary: null,
     activities: { skills: [], certifications: [], extracurriculars: [], leadership: [], volunteering: [] },
     activityDrafts: { skills: '', certifications: '', extracurriculars: '', leadership: '', volunteering: '' },
     analysisMessage: 'Scanning current job postings…',
@@ -122,6 +130,7 @@ export function pathfinder() {
     _analysisRunning: false,
     _roleQueryToken: 0,
     _uploadToken: 0,
+    _linkedinToken: 0,
 
     // ---- static field descriptors -------------------------------------
     // The prototype rebuilt these arrays (with a closure per field) on every
@@ -452,6 +461,111 @@ export function pathfinder() {
       this.projects.push({ id: nid(), name: '', tech: '', link: '', description: '' });
     },
     removeProject(idx) { this.projects.splice(idx, 1); },
+
+    // ---- LinkedIn export import ----------------------------------------
+    // A transcript has no work history in it, so before this the only source
+    // for the experience section was the form below. The import fills the same
+    // rows the form does and is editable in exactly the same way — it is a
+    // faster way to type, not a separate, trusted channel.
+
+    get linkedinPrompt() {
+      return {
+        reading: 'Opening your archive…',
+        importing: 'Reading your history…',
+        done: 'Import complete',
+        failed: "We couldn't read that export"
+      }[this.linkedinStatus] || 'Import from a LinkedIn export';
+    },
+    get linkedinSub() {
+      return {
+        reading: 'Your browser is opening the .zip — the archive is never uploaded',
+        importing: 'Only your positions, projects, skills and honors were sent',
+        done: this.linkedinSummaryLabel,
+        failed: 'Add your experience below instead'
+      }[this.linkedinStatus] || 'Settings → Get a copy of your data → the .zip LinkedIn emails you';
+    },
+    get linkedinBusy() { return this.linkedinStatus === 'reading' || this.linkedinStatus === 'importing'; },
+    get hasLinkedinWarnings() { return (this.linkedinWarnings || []).length > 0; },
+    get linkedinSummaryLabel() {
+      const s = this.linkedinSummary;
+      if (!s) return '';
+      const parts = [
+        [s.experience, 'position'], [s.projects, 'project'],
+        [s.skills, 'skill'], [s.certifications, 'certification'], [s.honors, 'honor']
+      ].filter(([n]) => n > 0).map(([n, word]) => `${n} ${word}${n === 1 ? '' : 's'}`);
+      return parts.length ? `Added ${parts.join(', ')}` : 'Nothing new to add — you already had it all';
+    },
+
+    /** Merge an import into the wizard's own rows.
+     *
+     *  Everything lands additively and deduped, because a student who imports
+     *  twice (or who imports after typing) should get their entries back, not a
+     *  doubled list they have to prune. The skills path is the one
+     *  `processTranscriptCourses` already uses for catalog-derived skills — a
+     *  third source of the same lists, merged on the same terms. */
+    async handleLinkedInImport(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      // Let the same file be picked again after a failure — without this the
+      // input holds the old value and the second attempt fires no change event.
+      event.target.value = '';
+
+      const token = ++this._linkedinToken;
+      this.linkedinStatus = 'reading';
+      this.linkedinWarnings = [];
+      this.linkedinSummary = null;
+
+      const res = await api.importLinkedInExport(file, {
+        onPhase: phase => { if (token === this._linkedinToken) this.linkedinStatus = phase; }
+      });
+      // A superseded import is dropped whole, for the same reason a superseded
+      // transcript parse is: landing it on top of newer state would add rows the
+      // student never saw offered.
+      if (token !== this._linkedinToken) return;
+
+      this.linkedinWarnings = res.warnings || [];
+      if (!res.success) {
+        this.linkedinStatus = 'failed';
+        return;
+      }
+
+      const seenExperience = new Set(this.experience.map(e => `${e.role}|${e.employer}`.toLowerCase()));
+      const added = (res.experience || []).filter(
+        e => !seenExperience.has(`${e.role}|${e.employer}`.toLowerCase())
+      );
+      this.experience = [...this.experience, ...added.map(e => ({ id: nid(), ...e }))];
+
+      const seenProjects = new Set(this.projects.map(p => (p.name || '').toLowerCase()));
+      const addedProjects = (res.projects || []).filter(p => !seenProjects.has((p.name || '').toLowerCase()));
+      this.projects = [...this.projects, ...addedProjects.map(p => ({ id: nid(), ...p }))];
+
+      // Attributes join the academic lists rather than the activities ones so
+      // they land on the review screen the student already visits, and so the
+      // evidence-id ordering in `collectProfileItems` is unaffected — imported
+      // entries are indistinguishable from typed ones by the time it runs.
+      const skills = this.mergeInto('skills', res.skills, this.claimedSkills);
+      const certifications = this.mergeInto('certifications', res.certifications, new Set(
+        [...(this.academic.certifications || []), ...(this.activities.certifications || [])]
+          .map(x => x.toLowerCase())
+      ));
+      const honors = this.mergeInto('honors', res.honors, new Set(
+        (this.academic.honors || []).map(x => x.toLowerCase())
+      ));
+
+      this.linkedinSummary = {
+        experience: added.length, projects: addedProjects.length, skills, certifications, honors,
+        filesRead: res.filesRead || []
+      };
+      this.linkedinStatus = 'done';
+    },
+
+    /** Append the values not already claimed to `academic[key]`; returns how
+     *  many were actually new. */
+    mergeInto(key, values, claimed) {
+      const fresh = (values || []).filter(v => !claimed.has(v.toLowerCase()));
+      if (fresh.length) this.academic[key] = [...(this.academic[key] || []), ...fresh];
+      return fresh.length;
+    },
 
     get experienceCards() {
       return this.experience.map(exp => ({

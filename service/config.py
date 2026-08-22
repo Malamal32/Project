@@ -31,6 +31,23 @@ MIN_EXTRACTED_CHARS = 40
 # push arbitrary bulk through the service.
 MAX_TRANSCRIPT_TEXT_CHARS = 400_000
 
+# --- LinkedIn data-export import -------------------------------------------
+# Bounds on POST /api/linkedin/import. The browser unzips the archive and sends
+# only the handful of CSVs the import reads (`service/linkedin_import.py`), so
+# these bound *that* — not the archive, which never leaves the student's
+# machine. Every one is far above what a real export contains: Positions.csv
+# for a student is a few kilobytes. They exist so a hand-rolled request cannot
+# push bulk through the service, not to constrain a legitimate import.
+MAX_LINKEDIN_FILES = 8
+MAX_LINKEDIN_FILE_CHARS = 500_000
+MAX_LINKEDIN_IMPORT_CHARS = 1_000_000
+MAX_LINKEDIN_ROWS = 200
+
+# One free-text description. These end up in the resume prompt, and a student
+# who pasted an essay into a LinkedIn position should not be able to crowd out
+# the rest of their own profile. Truncation is always reported — never silent.
+MAX_LINKEDIN_FIELD_CHARS = 4_000
+
 
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.getenv(name)
@@ -98,6 +115,44 @@ RESUME_MAX_RETRIES = int(os.getenv("RESUME_MAX_RETRIES", "1"))
 # clamps to the same value so the counter it shows the student stays honest;
 # change both together.
 RESUME_MAX_VARIANT = int(os.getenv("RESUME_MAX_VARIANT", "9"))
+
+
+# --- Claude API description polish -----------------------------------------
+# The third and smallest model stage: one typed (or LinkedIn-imported)
+# description in, a few resume lines out, run from a button the student is
+# waiting on. A single `POLISH_` prefix covers the block — `RESUME_GENERATION_
+# ENABLED` next to `RESUME_MODEL` is an existing inconsistency, not a pattern to
+# copy.
+
+# Kill switch. Off means POST /api/description/polish returns success=False and
+# the student keeps exactly what they typed. Same reasoning as the resume stage:
+# the alternative to a model here is a string-template rewrite, which is the
+# thing this stage exists to avoid, so there is no fallback to fall back to.
+POLISH_ENABLED = _env_flag("POLISH_ENABLED", True)
+
+POLISH_MODEL = os.getenv("POLISH_MODEL", LLM_MODEL)
+
+# `low` where the other two stages default to `medium`, and the difference is
+# the point: this runs synchronously under a button click with the student
+# watching, not behind an upload spinner or a market-analysis screen. Rewriting
+# one paragraph is also the shallowest task of the three. Latency here is the
+# difference between an affordance and an interruption.
+POLISH_EFFORT = os.getenv("POLISH_EFFORT", "low")
+
+# Thinking plus response. A few lines of output, so the headroom is thinking.
+POLISH_MAX_TOKENS = int(os.getenv("POLISH_MAX_TOKENS", "8000"))
+
+# Tighter than the resume stage's for the same reason the effort is lower — a
+# student holding down a button will not wait two minutes, and a timeout here
+# costs them nothing but the click.
+POLISH_TIMEOUT_SECONDS = float(os.getenv("POLISH_TIMEOUT_SECONDS", "45"))
+POLISH_MAX_RETRIES = int(os.getenv("POLISH_MAX_RETRIES", "1"))
+
+# One description. Matches MAX_LINKEDIN_FIELD_CHARS, which is what an imported
+# description was already truncated to — so anything that arrived through the
+# LinkedIn path is polishable by construction, and only a hand-pasted essay
+# trips this.
+MAX_POLISH_INPUT_CHARS = int(os.getenv("MAX_POLISH_INPUT_CHARS", "4000"))
 
 
 # --- Frontend --------------------------------------------------------------
