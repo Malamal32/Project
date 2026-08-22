@@ -12,7 +12,9 @@
   //
   // The root `wrangler.jsonc` is a different thing: it carries no Worker and
   // exists so `wrangler d1 ...` resolves the right database for the pipeline.
-  "name": "pathfinder",
+  // The Worker name is the deployed subdomain:
+  // coursefolio.stellic-pathfinders.workers.dev.
+  "name": "coursefolio",
   "main": "build/entry.py",
   "compatibility_date": "2026-08-21",
   "compatibility_flags": ["python_workers"],

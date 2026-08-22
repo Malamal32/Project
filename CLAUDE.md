@@ -92,7 +92,7 @@ in the suite rather than at deploy.
 ## Deployment
 
 The product runs as a single Python Worker at
-`pathfinder.stellic-pathfinders.workers.dev`:
+`coursefolio.stellic-pathfinders.workers.dev`:
 
 ```sh
 uv run python -m scripts.build_worker

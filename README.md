@@ -456,7 +456,7 @@ what it trims is no longer available to the resume drafter.
 ## Deploying to Cloudflare (`worker/`)
 
 The whole product runs as a single Python Worker at
-**https://pathfinder.stellic-pathfinders.workers.dev** — the FastAPI service from
+**https://coursefolio.stellic-pathfinders.workers.dev** — the FastAPI service from
 `service/` plus the browser client, on one origin, reading and writing the same
 D1 database the pipeline publishes to.
 
