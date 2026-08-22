@@ -200,6 +200,7 @@ SERVE_FRONTEND=true uv run uvicorn service.app:app --reload --port 8000
 | `POST /api/linkedin/import` | A student's own LinkedIn export → reviewable work history. No model call. **Stores nothing.** |
 | `POST /api/student/profile` | Stores a profile the student has reviewed. The only write path. |
 | `POST /api/resume/generate` | Reviewed profile + market demand → a tailored resume. **Stores nothing.** |
+| `POST /api/description/polish` | One typed or imported description → resume lines. **Stores nothing.** |
 | `GET /health` | Liveness. |
 
 All of these are live from the browser client — `frontend/` calls exactly these
@@ -389,6 +390,69 @@ history, and projects. That is the point of the stage, and the kill switch is ho
 you opt out — and the student is told, on the landing screen, at the upload step,
 and again on the last screen before drafting.
 
+## Description polish (`service/description_polish.py`)
+
+`POST /api/description/polish` takes one experience or project row and rewrites
+its description into resume lines. It runs from a "Polish with AI" button on the
+wizard step where the student typed it, and the result goes straight back into
+the same textarea — they read it, edit it, or undo it before it is worth
+anything to anyone. One item per request. Stores nothing.
+
+The stage exists because the description field had no author but the student.
+Typed notes go onto the resume verbatim, and a LinkedIn import makes that worse
+rather than better: it fills the same field with whatever the student once pasted
+into LinkedIn, in LinkedIn's register.
+
+### Why this stage has two guards and the evidence contract has one
+
+The polished text **replaces** the description, which puts it upstream of two
+things that read that field: `resume_evidence.py` folds it into the evidence text
+every generated bullet for that item is checked against, and `market_matching.py`
+word-matches employer-demanded skills against it. So a rewrite can go wrong in
+two directions, and only one of them is the resume stage's known failure:
+
+- **Adding a figure.** "Wrote a script to auto-close stale tickets" becomes "cut
+  ticket backlog 40%", and a later bullet can then quote a number nobody
+  measured. `text_guards.unsupported_numbers` — the same check the evidence
+  contract uses — drops the offending line and keeps its siblings.
+- **Dropping a name.** "Wrote ETL jobs in Python against Postgres" becomes "Built
+  data pipelines": tighter, entirely true, and it has just cost the student three
+  skills the matcher would have verified. **The evidence contract is structurally
+  incapable of catching this** — it validates the claims that are present and has
+  no memory of what was present before. `text_guards.missing_protected_terms` is
+  the only thing standing here, and because a dropped name cannot be repaired by
+  deleting anything, it rejects the whole rewrite rather than patching it.
+
+Both guards live in `service/text_guards.py`, a leaf both this stage and
+`resume_evidence.py` import so neither has to import the other. They read
+different sources on purpose: figures are checked against the whole card
+(a year in `dates` legitimately supports "over a 2024 summer internship"), names
+against the description alone (the title and organization are separate fields the
+resume renders on their own line, so a bullet that does not repeat the employer's
+name has dropped nothing).
+
+`protected_terms` deliberately under-protects in two known places, documented at
+the function: a lowercase sentence-initial name, and an all-lowercase hyphenated
+name like `scikit-learn`, whose interior hyphen cannot be told from the one in
+`auto-close`. A missed protection costs one skill match; a spurious rejection
+teaches the student the button does not work.
+
+### Data handling
+
+No fallback, for the same reason the resume stage has none — the alternative to a
+model rewriting prose is string templates rewriting prose, which is the thing
+being replaced, and a template rewrite would be indistinguishable from a real one
+to the student reading it. A disabled stage, an outage, or a failed guard returns
+`success=False` with `description=""`, and the browser assigns only when both
+`success` and `description` are truthy, so no response this endpoint can send
+will blank what the student typed. `POLISH_ENABLED=false` is the kill switch.
+
+Persists nothing; logs no description and no model output — only token counts,
+stop reasons, and how many lines a guard dropped. This is a fifth egress point,
+disclosed on the landing screen and again on both steps that offer the button,
+including the part worth saying out loud: a tighter rewrite is a shorter one, and
+what it trims is no longer available to the resume drafter.
+
 ## Deploying to Cloudflare (`worker/`)
 
 The whole product runs as a single Python Worker at
@@ -435,8 +499,9 @@ code running in both places. If behaviour differs, that is a bug in
 cd worker && npx wrangler secret put ANTHROPIC_API_KEY
 ```
 
-Without it the deploy still serves: extraction falls back to rules and resume
-drafting returns `success=False`. Nothing else needs a secret.
+Without it the deploy still serves: extraction falls back to rules, and resume
+drafting and description polish return `success=False`. Nothing else needs a
+secret.
 
 The bundle is ~5.2 MiB compressed, which needs **Workers Paid** (10 MiB limit;
 the free tier caps at 3 MiB). `anthropic` and `pydantic_core` are most of it.
@@ -464,10 +529,10 @@ the API's.
 
 ### What is live and what is still a mock
 
-`frontend/js/services/api-service.js` is the only door to the network. Four calls
+`frontend/js/services/api-service.js` is the only door to the network. Five calls
 are real, against the endpoints above: transcript parse, LinkedIn import, profile
-save, resume generate. Three are **mocks**, clearly marked as such, because the
-endpoint does not exist yet:
+save, resume generate, description polish. Three are **mocks**, clearly marked as
+such, because the endpoint does not exist yet:
 
 | Call | Status | Note |
 |---|---|---|
@@ -542,11 +607,14 @@ Every file under `data/reference/` is documented in `data/reference/SOURCE.md`
   raw payloads go to `data/raw_store/` instead of R2.
 - `ANTHROPIC_API_KEY` — optional, read by the SDK itself (nothing in this repo
   reads or stores it). Without it the transcript service falls back to rule-based
-  extraction and resume generation returns `success=False`. Inject it from a
-  secret manager in production.
+  extraction, and resume generation and description polish return
+  `success=False`. Inject it from a secret manager in production.
 - `LLM_EXTRACTION_ENABLED`, `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT`,
   `ANTHROPIC_MAX_TOKENS`, `ANTHROPIC_TIMEOUT_SECONDS`, `ANTHROPIC_MAX_RETRIES`,
   `MAX_LLM_INPUT_CHARS` — all optional, all defaulted in `service/config.py`.
+- `POLISH_ENABLED`, `POLISH_MODEL`, `POLISH_EFFORT`, `POLISH_MAX_TOKENS`,
+  `POLISH_TIMEOUT_SECONDS`, `POLISH_MAX_RETRIES`, `MAX_POLISH_INPUT_CHARS` — the
+  same dials for the description-polish stage, also all optional and defaulted.
 - `SERVE_FRONTEND` — optional, default false. True serves `frontend/` from the
   same app as the API.
 - `PATHFINDER_ALLOWED_ORIGINS` — optional. Only needed when the frontend is served

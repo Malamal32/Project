@@ -170,6 +170,36 @@ the only line a reader gives this section. Prefer the advanced course over the \
 introductory one when both cover the same ground, and drop the course that \
 supports nothing the target role asks for.
 
+`coursework_summary` — one sentence, roughly 15 to 30 words, saying what those \
+selected courses amount to. This is what the resume actually prints; the \
+`coursework` entries are the evidence under it. A list of registrar titles \
+tells a reader nothing they can use, so describe the ground covered: "Database \
+coursework in Oracle and SQL, Python scripting, and object-oriented \
+programming in Java and C++" over "Intro ORCL&SQL, Intro Script Lang:Python, \
+Adv C++".
+
+Its rules are the rules for prose, not for echoes — you are describing the \
+courses, not quoting them, so it is checked as a claim rather than compared \
+character for character. That freedom is narrow:
+
+- cite the ids of every course the sentence draws on, and only courses you \
+also returned in `coursework`. A course you dropped from the list may not \
+reappear here.
+- name a technology only if a cited course names it. "Intro ORCL&SQL" \
+supports Oracle and SQL. It does not support PL/SQL, data modeling, or \
+"enterprise databases".
+- describe subject matter, not attainment. "Coursework in X" is a fact about \
+their schedule; "proficient in X" is a claim about their ability that a course \
+title cannot support.
+- no course codes, no section numbers, no credit hours, no grades, no counts \
+of courses.
+- do not open with the word "Coursework". The sentence prints after a \
+"Relevant coursework:" label, so an opening that repeats it reads as a stutter.
+
+Omit it entirely rather than pad it. If the selected courses are too few or \
+too scattered to summarize honestly, return null and the list stands on its \
+own.
+
 Empty sections are correct when the profile has nothing to fill them. An empty \
 projects list is a true resume; an invented project is not.
 

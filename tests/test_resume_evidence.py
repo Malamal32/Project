@@ -397,6 +397,111 @@ def test_invented_gpa_is_nulled():
     assert document.education.gpa is None
 
 
+# --- the coursework summary ------------------------------------------------
+#
+# Prose about the courses rather than a quotation of them, so it is the one
+# field in this block held to the claim rules instead of the verbatim rule.
+# These say what that buys and what it does not.
+
+
+def test_coursework_summary_describing_the_cited_courses_survives():
+    """Rewording is the point here — the same text under `coursework` would be
+    dropped as a verbatim mismatch, and that difference is deliberate."""
+    document, _ = _validate(
+        _document(
+            education=EducationBlock(
+                coursework=[
+                    Claim(text="Data Structures", evidence=["c1"]),
+                    Claim(text="Database Systems", evidence=["c2"]),
+                ],
+                coursework_summary=Claim(
+                    text="Study of data structures and relational database systems.",
+                    evidence=["c1", "c2"],
+                ),
+            )
+        )
+    )
+    assert document.education.coursework_summary is not None
+    assert "relational database" in document.education.coursework_summary.text
+
+
+def test_coursework_summary_citing_a_dropped_course_is_dropped():
+    """The path back in. The course line is deleted for rewording, so a
+    sentence resting on it would reintroduce the deleted claim in softer
+    words — with the list gone, nothing on the resume backs it."""
+    document, dropped = _validate(
+        _document(
+            education=EducationBlock(
+                coursework=[Claim(text="Advanced Database Design", evidence=["c2"])],
+                coursework_summary=Claim(
+                    text="Coursework in relational database systems.", evidence=["c2"]
+                ),
+            )
+        )
+    )
+    assert VERBATIM_MISMATCH in _reasons(dropped)
+    assert EVIDENCE_OUT_OF_SCOPE in _reasons(dropped)
+    assert document.education.coursework_summary is None
+
+
+def test_coursework_summary_naming_a_gap_skill_is_dropped():
+    document, dropped = _validate(
+        _document(
+            education=EducationBlock(
+                coursework=[Claim(text="Database Systems", evidence=["c2"])],
+                coursework_summary=Claim(
+                    text="Database coursework using Kubernetes for deployment.", evidence=["c2"]
+                ),
+            )
+        )
+    )
+    assert GAP_SKILL_MENTIONED in _reasons(dropped)
+    assert document.education.coursework_summary is None
+
+
+def test_coursework_summary_with_no_evidence_is_dropped():
+    document, dropped = _validate(
+        _document(
+            education=EducationBlock(
+                coursework=[Claim(text="Database Systems", evidence=["c2"])],
+                coursework_summary=Claim(text="Extensive database coursework.", evidence=[]),
+            )
+        )
+    )
+    assert NO_EVIDENCE in _reasons(dropped)
+    assert document.education.coursework_summary is None
+
+
+def test_coursework_summary_counting_courses_it_cannot_support_is_dropped():
+    document, dropped = _validate(
+        _document(
+            education=EducationBlock(
+                coursework=[Claim(text="Database Systems", evidence=["c2"])],
+                coursework_summary=Claim(
+                    text="Completed 12 courses in database systems.", evidence=["c2"]
+                ),
+            )
+        )
+    )
+    assert UNSUPPORTED_NUMBER in _reasons(dropped)
+    assert document.education.coursework_summary is None
+
+
+def test_absent_coursework_summary_leaves_the_course_list_intact():
+    """No summary is a legitimate answer, and the list is what the resume falls
+    back to — so the courses must survive its absence untouched."""
+    document, _ = _validate(
+        _document(
+            education=EducationBlock(
+                coursework=[Claim(text="Data Structures", evidence=["c1"])],
+                coursework_summary=None,
+            )
+        )
+    )
+    assert document.education.coursework_summary is None
+    assert [c.text for c in document.education.coursework] == ["Data Structures"]
+
+
 # --- duplicates ------------------------------------------------------------
 
 

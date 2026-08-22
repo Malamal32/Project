@@ -7,6 +7,7 @@
 //   POST /api/linkedin/import    -> importLinkedInExport(file)
 //   POST /api/student/profile    -> saveStudentProfile(profile, method)
 //   POST /api/resume/generate    -> generateResume({...})
+//   POST /api/description/polish -> polishDescription({ kind, item })
 //
 // Mocked — the endpoint does not exist yet. These read from the hiring database
 // the pipeline builds (CIP majors, O*NET occupations, postings, requirements),
@@ -645,6 +646,32 @@ export async function saveStudentProfile(academicProfile, extractionMethod = 'ma
 }
 
 /**
+ * Wizard row -> wire shape, for the two endpoints that take experience and
+ * projects. Defined once because both must send the same row identically: the
+ * polish stage rewrites a description and the resume stage validates bullets
+ * against it, so a `dates` string assembled two different ways would mean the
+ * two stages disagreed about what the student wrote.
+ */
+function toWireExperience(e) {
+  return {
+    id: e.id,
+    title: e.role || null,
+    organization: e.employer || null,
+    dates: [e.start, e.end].filter(Boolean).join(' – ') || null,
+    description: e.description || ''
+  };
+}
+
+function toWireProject(p) {
+  return {
+    id: p.id,
+    name: p.name || null,
+    technologies: p.tech || '',
+    description: p.description || ''
+  };
+}
+
+/**
  * POST /api/resume/generate — draft a resume from the reviewed profile plus
  * real hiring demand.
  *
@@ -671,19 +698,8 @@ export async function generateResume({ career, academic, activities, experience,
       location: (career && career.location) || null
     },
     academic_profile: toWireProfile(academic, activities),
-    experience: (experience || []).map(e => ({
-      id: e.id,
-      title: e.role || null,
-      organization: e.employer || null,
-      dates: [e.start, e.end].filter(Boolean).join(' – ') || null,
-      description: e.description || ''
-    })),
-    projects: (projects || []).map(p => ({
-      id: p.id,
-      name: p.name || null,
-      technologies: p.tech || '',
-      description: p.description || ''
-    })),
+    experience: (experience || []).map(toWireExperience),
+    projects: (projects || []).map(toWireProject),
     market_profile: { skills: ((marketProfile && marketProfile.skills) || []) },
     variant: variant || 0
   };
@@ -707,6 +723,48 @@ export async function generateResume({ career, academic, activities, experience,
       gaps: [],
       warnings: ["We couldn't reach the resume service. Everything you entered is still here — please try again."],
       variant: variant || 0
+    };
+  }
+}
+
+/**
+ * POST /api/description/polish — rewrite one experience or project description
+ * into resume lines.
+ *
+ * `kind` is 'experience' or 'project'; `item` is the wizard row itself, passed
+ * whole so the caller never has to know the wire shape.
+ *
+ * No fallback here either, and for a sharper reason than the resume stage's:
+ * the obvious JS fallback — split on sentences, capitalize, prefix a dash — is
+ * exactly the string-template prose this endpoint exists to replace, and it
+ * would be indistinguishable from a real rewrite to the student reading it.
+ * There is no offline version of this feature. If it cannot run, it says so.
+ *
+ * Returns { success, description, warnings }. `description` is '' on every
+ * failure path, and callers must assign only when both `success` and
+ * `description` are truthy — that pair is what makes it impossible for a failed
+ * polish to blank the student's own words.
+ */
+export async function polishDescription({ kind, item }) {
+  const body = kind === 'experience'
+    ? { kind, experience: toWireExperience(item) }
+    : { kind, project: toWireProject(item) };
+
+  try {
+    const response = await fetch(`${TRANSCRIPT_SERVICE_URL}/api/description/polish`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) throw new Error(`polish service returned ${response.status}`);
+    return await response.json();
+  } catch (err) {
+    // Reason only — never the description.
+    console.warn('polish service unavailable:', err);
+    return {
+      success: false,
+      description: '',
+      warnings: ["We couldn't reach the polishing service. Your text is unchanged — please try again."]
     };
   }
 }

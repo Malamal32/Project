@@ -517,10 +517,34 @@ class _Validator:
                     f"{field} does not match the profile",
                 )
 
+        kept_coursework = [c for c in block.coursework if self._check_verbatim("education", c)]
+
+        # Prose about the coursework, so it takes the ordinary claim check
+        # rather than the verbatim one — see the note on the field in schemas.
+        # It must also cite only courses that survived above: a sentence
+        # summarizing a course whose own line was just deleted as unverifiable
+        # would be the deleted claim coming back in softer words.
+        summary = block.coursework_summary
+        kept_summary: Optional[Claim] = None
+        if summary is not None and summary.text.strip():
+            surviving = {i for c in kept_coursework for i in c.evidence}
+            stale = [i for i in summary.evidence if i not in surviving]
+            if stale:
+                self._drop(
+                    "education",
+                    summary.text,
+                    list(summary.evidence),
+                    EVIDENCE_OUT_OF_SCOPE,
+                    f"cites course(s) not kept on the resume: {', '.join(sorted(stale))}",
+                )
+            elif self._check_claim("education", summary):
+                kept_summary = summary
+
         return EducationBlock(
             **resolved,
-            coursework=[c for c in block.coursework if self._check_verbatim("education", c)],
+            coursework=kept_coursework,
             honors=[h for h in block.honors if self._check_verbatim("education", h)],
+            coursework_summary=kept_summary,
         )
 
 

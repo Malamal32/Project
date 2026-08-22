@@ -286,6 +286,15 @@ class EducationBlock(BaseModel):
     gpa: Optional[str] = None
     coursework: List[Claim] = Field(default_factory=list)
     honors: List[Claim] = Field(default_factory=list)
+    # One sentence describing what the selected courses cover, in place of the
+    # comma-separated list of titles. Prose, so unlike `coursework` it is NOT
+    # held to the verbatim rule — it goes through the same evidence check the
+    # `summary` claim does. The distinction is that `coursework` entries are
+    # quotations of the student's record and this is a statement about them, and
+    # a statement about evidence is what every other generated line here already
+    # is. `coursework` is still populated and is what this rests on: it is the
+    # evidence, and it is what renders if this claim is dropped.
+    coursework_summary: Optional[Claim] = None
 
 
 class ResumeDocument(BaseModel):

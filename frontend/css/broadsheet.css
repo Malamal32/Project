@@ -241,14 +241,14 @@ textarea.input { min-height: 90px; resize: vertical; }
   font-size: 22px; letter-spacing: -0.01em; line-height: 1;
   color: var(--color-brand-navy);
 }
-.nav-brand img { display: block; width: 30px; height: 30px; }
+.nav-brand img { display: block; width: 32px; height: 32px; }
 .nav-brand .brand-folio { color: var(--color-brand-teal); }
 /* The wordmark's tittle is orange while the rest of the letter stays teal, so
    the letter is set dotless (U+0131) and the dot drawn back on. Sized in em so
    it tracks the font-size above. */
 .nav-brand .brand-i { position: relative; }
 .nav-brand .brand-i::after {
-  content: ''; position: absolute; left: 50%; top: -0.05em;
+  content: ''; position: absolute; left: 50%; top: 0.2em;
   width: 0.2em; height: 0.2em; margin-left: -0.1em;
   border-radius: 50%; background: var(--color-brand-spark);
 }

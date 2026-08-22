@@ -7,7 +7,7 @@
 //
 // All wizard state lives here, in the tab, and is not persisted across a
 // reload. It is not, however, private to the tab, and the landing screen says
-// so: three steps leave the browser, each through js/services/api-service.js.
+// so: five steps leave the browser, each through js/services/api-service.js.
 //
 //   - uploading a transcript reads the PDF here and POSTs only its text to the
 //     extraction service, which sends that text to the Anthropic API (the file
@@ -19,7 +19,11 @@
 //   - continuing past the review step saves the reviewed profile to the
 //     database — the only write in the whole flow;
 //   - generating a resume sends that profile plus the experience and projects
-//     (typed or imported) to the service, which sends them to the Anthropic API.
+//     (typed or imported) to the service, which sends them to the Anthropic API;
+//   - polishing one description sends that description and the fields on the
+//     same card (role and employer, or project name and technology) to the
+//     service, which sends them to the Anthropic API. Only on a click, only the
+//     one card, and never automatically.
 //
 // Nothing else does. If you add a call, add it to that list and to the
 // disclosure copy in index.html.
@@ -62,6 +66,15 @@ function delayMin(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 let _id = 0;
 function nid() { return 'id' + (++_id) + '_' + Math.random().toString(36).slice(2, 7); }
+
+// Per-row state for the Polish button. Seeded on every experience and project
+// row from one place — typed rows and LinkedIn-imported rows alike — so the row
+// shape is defined once and the template never binds to an undefined field.
+// `descriptionBefore` is null when there is nothing to undo, which is also what
+// the Undo button keys off.
+function polishFields() {
+  return { polishStatus: 'idle', polishWarning: '', descriptionBefore: null };
+}
 
 function formatDataDate(iso) {
   try {
@@ -113,6 +126,9 @@ function freshState() {
     // Evidence ids of the courses the drafter chose to surface, in its order.
     // Empty means "no selection came back" — see `courseworkTitles`.
     resumeCourseIds: [],
+    // The drafted one-sentence description of that selection. Empty falls back
+    // to the titles themselves — see `refreshResumeSummary`.
+    resumeCourseworkText: '',
     // Which stage produced the academic fields, carried from the parse response
     // through to the save so the stored row records real provenance. "manual"
     // is legitimate — a student may type in everything themselves.
@@ -454,13 +470,55 @@ export function pathfinder() {
     // ---- experience and projects ---------------------------------------
 
     addExperience() {
-      this.experience.push({ id: nid(), employer: '', role: '', start: '', end: '', description: '' });
+      this.experience.push({ id: nid(), employer: '', role: '', start: '', end: '', description: '', ...polishFields() });
     },
     removeExperience(idx) { this.experience.splice(idx, 1); },
     addProject() {
-      this.projects.push({ id: nid(), name: '', tech: '', link: '', description: '' });
+      this.projects.push({ id: nid(), name: '', tech: '', link: '', description: '', ...polishFields() });
     },
     removeProject(idx) { this.projects.splice(idx, 1); },
+
+    /** Rewrite one row's description into resume lines, in place.
+     *
+     *  Takes the row object rather than an index, like the bindings in
+     *  index.html and for the same reason: a row can be removed while this is
+     *  in flight, and an index into the shortened array would write to the
+     *  wrong card.
+     *
+     *  `description` is assigned in exactly one place — inside the success
+     *  branch — which is what preserves the student's own words on every
+     *  failure path without a single line of restore logic. There is
+     *  deliberately no offline fallback; see `polishDescription` in
+     *  api-service.js for why a local one would be worse than none. */
+    async polishDescription(row, kind) {
+      if (!(row.description || '').trim() || row.polishStatus === 'polishing') return;
+      row.polishStatus = 'polishing';
+      row.polishWarning = '';
+
+      const res = await api.polishDescription({ kind, item: row });
+
+      if (res.success && res.description) {
+        row.descriptionBefore = row.description;
+        row.description = res.description;
+        row.polishStatus = 'done';
+      } else {
+        row.polishStatus = 'failed';
+      }
+      // Shown on success too: a partial result carries the reason a line was
+      // dropped, and that is the guardrail made visible rather than an error.
+      row.polishWarning = (res.warnings || [])[0] || '';
+    },
+
+    /** One level, and that is enough: polishing again after an undo re-captures.
+     *  Stays available after the student edits the polished text, because
+     *  "give me back what I wrote" is still a meaningful thing to ask then. */
+    undoPolish(row) {
+      if (row.descriptionBefore === null) return;
+      row.description = row.descriptionBefore;
+      row.descriptionBefore = null;
+      row.polishStatus = 'idle';
+      row.polishWarning = '';
+    },
 
     // ---- LinkedIn export import ----------------------------------------
     // A transcript has no work history in it, so before this the only source
@@ -533,11 +591,11 @@ export function pathfinder() {
       const added = (res.experience || []).filter(
         e => !seenExperience.has(`${e.role}|${e.employer}`.toLowerCase())
       );
-      this.experience = [...this.experience, ...added.map(e => ({ id: nid(), ...e }))];
+      this.experience = [...this.experience, ...added.map(e => ({ id: nid(), ...e, ...polishFields() }))];
 
       const seenProjects = new Set(this.projects.map(p => (p.name || '').toLowerCase()));
       const addedProjects = (res.projects || []).filter(p => !seenProjects.has((p.name || '').toLowerCase()));
-      this.projects = [...this.projects, ...addedProjects.map(p => ({ id: nid(), ...p }))];
+      this.projects = [...this.projects, ...addedProjects.map(p => ({ id: nid(), ...p, ...polishFields() }))];
 
       // Attributes join the academic lists rather than the activities ones so
       // they land on the review screen the student already visits, and so the
@@ -701,6 +759,12 @@ export function pathfinder() {
       // titles this UI renders are not, so matching on text would miss.
       const education = (res.resume && res.resume.education) || {};
       this.resumeCourseIds = (education.coursework || []).flatMap(c => c.evidence || []);
+      // The sentence that replaces the list of titles. Empty when the drafter
+      // declined to write one or the validator deleted it, and the list of
+      // course titles renders instead — that list is the student's own record,
+      // not template prose standing in for a model, so falling back to it is
+      // showing what is true rather than manufacturing a substitute.
+      this.resumeCourseworkText = (education.coursework_summary || {}).text || '';
       this.resumeWarnings = res.warnings || [];
       // Claims the evidence validator deleted. Shown, not swallowed: "we left
       // this out and here is why" is a usable answer and it keeps the guardrail
@@ -790,8 +854,14 @@ export function pathfinder() {
       });
       return [...new Set(titles.filter(Boolean))];
     },
-    get hasCoursework() { return this.courseworkTitles.length > 0; },
-    get courseworkLine() { return this.courseworkTitles.join(', '); },
+    get hasCoursework() { return this.courseworkLine.length > 0; },
+    /** The drafted sentence when there is one, the titles it was drawn from
+     *  otherwise. Both describe the same courses; only one is worth a reader's
+     *  attention, and it isn't the list of registrar titles. */
+    get courseworkLine() {
+      return this.resumeCourseworkText || this.courseworkTitles.join(', ');
+    },
+    get courseworkIsDrafted() { return Boolean(this.resumeCourseworkText); },
     get hasHonors() { return (this.academic.honors || []).length > 0; },
     get honorsLine() { return (this.academic.honors || []).join(', '); },
     get hasExperience() { return this.experience.length > 0; },

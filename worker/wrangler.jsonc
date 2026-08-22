@@ -53,12 +53,17 @@
     // models needed "high" for. At the default (medium/high) a resume takes
     // ~35s, which is a long wait staring at a spinner. Sweep these against real
     // transcripts before trusting them for anything but a demo.
+    //
+    // POLISH_EFFORT is already "low" in service/config.py and is pinned here
+    // only to say so out loud: that stage runs under a button the student is
+    // watching, so it has the least latency budget of the three.
     "ANTHROPIC_EFFORT": "low",
-    "RESUME_EFFORT": "low"
+    "RESUME_EFFORT": "low",
+    "POLISH_EFFORT": "low"
   }
 
   // ANTHROPIC_API_KEY is a secret, not a var:
   //   cd worker && npx wrangler secret put ANTHROPIC_API_KEY
-  // Without it the deploy still works — extraction falls back to rules and
-  // resume drafting reports itself unavailable.
+  // Without it the deploy still works — extraction falls back to rules, and
+  // resume drafting and description polish report themselves unavailable.
 }

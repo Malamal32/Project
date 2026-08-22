@@ -31,11 +31,17 @@ the student's profile, and `service/resume_evidence.py` deletes any claim whose 
 don't resolve or don't support the text. Both drop rather than guess, and both report
 what they dropped and why.
 
+The one stage that writes *upstream* of that contract is `service/description_polish.py`,
+which replaces a description the evidence text is later built from. It carries its own
+guards in `service/text_guards.py` — including a check the evidence contract cannot
+express, that the rewrite dropped no skill keyword. If you add another stage that
+rewrites student-supplied text in place, it needs the same two.
+
 **Never a template fallback for generated prose.** Extraction falls back to regex
 when the model is unavailable — a worse reading of a document that still exists.
-Resume generation has *no* fallback, deliberately: string-template prose is what the
-stage exists to replace. An outage returns `success=False` and says so. Do not add
-one, in Python or in JS.
+Resume generation and description polish have *no* fallback, deliberately:
+string-template prose is what both stages exist to replace. An outage returns
+`success=False` and says so. Do not add one, in Python or in JS.
 
 **Precision over recall, and record the reason.** US-scope, PII redaction, and
 company dedupe all exclude rather than guess, and all store *why*
@@ -110,7 +116,7 @@ the way down.
 uv run pytest
 ```
 
-Green means 278 passed, 1 xfailed. The suite needs no network and no database
+Green means 330 passed, 1 xfailed. The suite needs no network and no database
 service. Two tests shell out to `node` and skip without it
 (`test_evidence_id_parity.py`, `test_linkedin_parity.py`) — if you changed
 anything in `frontend/js/services/`, make sure they actually ran.
@@ -121,9 +127,9 @@ To see the whole product end to end:
 SERVE_FRONTEND=true uv run uvicorn service.app:app --reload --port 8000
 ```
 
-It works with no `ANTHROPIC_API_KEY`: extraction falls back to regex and resume
-generation reports itself unavailable. That is the correct degraded behaviour, not a
-broken setup.
+It works with no `ANTHROPIC_API_KEY`: extraction falls back to regex, and resume
+generation and description polish report themselves unavailable. That is the correct
+degraded behaviour, not a broken setup.
 
 ## House style
 
