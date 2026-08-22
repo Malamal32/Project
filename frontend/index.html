@@ -49,7 +49,14 @@
         </div>
       </div>
       <button type="button" class="btn btn-primary" style="font-size:16px;padding:14px 28px" @click="goStart()">Start my resume</button>
-      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:56ch">No account required, and nothing is restored if you close or refresh this tab. Five steps do leave your browser: your transcript is read by our extraction service, a LinkedIn export you choose to import has its work history read, the academic record you approve is saved, drafting your resume sends that record along with the experience and projects you enter, and polishing a description sends that one description. All but the LinkedIn import use an AI model to read or write text. We'll say so again at each step.</p>
+      <!-- This count is the promise the whole flow is measured against, so it
+           is written for what the student can actually reach, not for what the
+           code can do. It says three because SHOW_LINKEDIN_IMPORT and
+           SHOW_POLISH are false in js/app.js. Turn either on and this sentence
+           is wrong until it names that step too — a LinkedIn export having its
+           work history read (the one step that involves no AI model), or
+           polishing a description sending that one description. -->
+      <p style="margin-top:var(--space-4);font-size:13px;opacity:0.6;max-width:56ch">No account required, and nothing is restored if you close or refresh this tab. Three steps do leave your browser: your transcript is read by our extraction service, the academic record you approve is saved, and drafting your resume sends that record along with the experience and projects you enter. All three use an AI model to read or write text. We'll say so again at each step.</p>
     </section>
 
     <!-- ── 1. Career Target ──────────────────────────────────────────── -->
@@ -218,8 +225,14 @@
 
       <!-- Import first, then the form. The imported rows land in the same
            editable cards below, so this is a faster way to fill them in — not a
-           separate, more-trusted source. -->
-      <label class="card elev-sm" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer;border:1.5px dashed var(--color-accent-300);background:var(--color-accent-100);margin-bottom:var(--space-4)">
+           separate, more-trusted source.
+           Hidden behind showLinkedInImport (see SHOW_LINKEDIN_IMPORT in
+           js/app.js). The importer underneath still works; only the way in is
+           gone, so all three pieces — the drop target, its warnings and the
+           disclosure that explains what would be sent — hide together. A
+           warning list with nothing that could have produced it is worse than
+           no warning list. -->
+      <label x-show="showLinkedInImport" class="card elev-sm" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);cursor:pointer;border:1.5px dashed var(--color-accent-300);background:var(--color-accent-100);margin-bottom:var(--space-4)">
         <input type="file" accept=".zip,.csv,application/zip,text/csv" style="position:absolute;width:1px;height:1px;opacity:0" @change="handleLinkedInImport($event)" />
         <div x-show="linkedinBusy" style="width:34px;height:34px;flex-shrink:0;border-radius:50%;border:3px solid var(--color-accent-100);border-top-color:var(--color-accent);border-right-color:var(--color-accent-2-300);animation:spin 0.9s linear infinite"></div>
         <div x-show="!linkedinBusy" style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--color-surface);display:flex;align-items:center;justify-content:center">
@@ -230,12 +243,12 @@
           <span style="font-size:13px;opacity:0.6" x-text="linkedinSub"></span>
         </span>
       </label>
-      <div x-show="hasLinkedinWarnings" style="margin:0 0 var(--space-4);display:grid;gap:var(--space-2)">
+      <div x-show="showLinkedInImport && hasLinkedinWarnings" style="margin:0 0 var(--space-4);display:grid;gap:var(--space-2)">
         <template x-for="(w, i) in linkedinWarnings" :key="i">
           <p style="margin:0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="w"></p>
         </template>
       </div>
-      <p style="margin:0 0 var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">Your browser opens the archive itself. Only your positions, projects, skills, certifications and honors are sent — your connections and messages are never read, never uploaded, and nothing is stored. No AI model reads any of it. Everything imported appears below, and on the skills screen, for you to edit or delete.</p>
+      <p x-show="showLinkedInImport" style="margin:0 0 var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">Your browser opens the archive itself. Only your positions, projects, skills, certifications and honors are sent — your connections and messages are never read, never uploaded, and nothing is stored. No AI model reads any of it. Everything imported appears below, and on the skills screen, for you to edit or delete.</p>
 
       <template x-for="(exp, idx) in experience" :key="exp.id">
         <div class="card elev-sm" style="margin-bottom:var(--space-4)">
@@ -249,7 +262,12 @@
           </div>
           <div class="field" style="margin-top:var(--space-3)"><label>Accomplishments / description</label>
             <textarea class="input" rows="3" placeholder="One line per accomplishment" x-model="exp.description"></textarea></div>
-          <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap">
+          <!-- Polish, and everything that only makes sense once it has run,
+               hidden behind showPolish (see SHOW_POLISH in js/app.js). Undo
+               hides with it: with no way to polish there is nothing to undo,
+               and a lone Undo button would offer to revert an edit the student
+               made themselves. -->
+          <div x-show="showPolish" style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap">
             <button type="button" class="btn btn-secondary"
                     :disabled="!(exp.description || '').trim() || exp.polishStatus === 'polishing'"
                     @click="polishDescription(exp, 'experience')"
@@ -257,13 +275,13 @@
             <button type="button" class="btn btn-ghost" x-show="exp.descriptionBefore !== null"
                     @click="undoPolish(exp)">Undo</button>
           </div>
-          <p x-show="exp.polishStatus === 'done'" style="margin:var(--space-2) 0 0;font-size:13px;opacity:0.6">Rewritten by an AI model from what you typed. Read every line — it is yours to correct.</p>
-          <p x-show="exp.polishWarning" style="margin:var(--space-2) 0 0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="exp.polishWarning"></p>
+          <p x-show="showPolish && exp.polishStatus === 'done'" style="margin:var(--space-2) 0 0;font-size:13px;opacity:0.6">Rewritten by an AI model from what you typed. Read every line — it is yours to correct.</p>
+          <p x-show="showPolish && exp.polishWarning" style="margin:var(--space-2) 0 0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="exp.polishWarning"></p>
           <button type="button" class="btn btn-ghost" @click="removeExperience(idx)" style="margin-top:var(--space-2)">Remove this entry</button>
         </div>
       </template>
       <button type="button" class="btn btn-secondary" @click="addExperience()">+ Add experience</button>
-      <p style="margin-top:var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">"Polish with AI" sends that one description, plus the role and employer on the same card, to an AI model and replaces the text with what it writes. It rewords; it cannot add a fact, a tool or a figure your notes don't already contain, and anything it adds anyway is removed before you see it. Nothing is stored, and Undo puts your own words back. One thing worth knowing: a tighter rewrite is a shorter one, and whatever it trims is no longer there for the resume drafter to use.</p>
+      <p x-show="showPolish" style="margin-top:var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">"Polish with AI" sends that one description, plus the role and employer on the same card, to an AI model and replaces the text with what it writes. It rewords; it cannot add a fact, a tool or a figure your notes don't already contain, and anything it adds anyway is removed before you see it. Nothing is stored, and Undo puts your own words back. One thing worth knowing: a tighter rewrite is a shorter one, and whatever it trims is no longer there for the resume drafter to use.</p>
     </section>
 
     <!-- ── 6. Projects ───────────────────────────────────────────────── -->
@@ -279,7 +297,9 @@
           </div>
           <div class="field" style="margin-top:var(--space-3)"><label>Description</label>
             <textarea class="input" rows="3" placeholder="One line per accomplishment" x-model="proj.description"></textarea></div>
-          <div style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap">
+          <!-- Same flag as the experience step: the two are one feature to a
+               student, and leaving it on here would contradict the step before. -->
+          <div x-show="showPolish" style="display:flex;align-items:center;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap">
             <button type="button" class="btn btn-secondary"
                     :disabled="!(proj.description || '').trim() || proj.polishStatus === 'polishing'"
                     @click="polishDescription(proj, 'project')"
@@ -287,13 +307,13 @@
             <button type="button" class="btn btn-ghost" x-show="proj.descriptionBefore !== null"
                     @click="undoPolish(proj)">Undo</button>
           </div>
-          <p x-show="proj.polishStatus === 'done'" style="margin:var(--space-2) 0 0;font-size:13px;opacity:0.6">Rewritten by an AI model from what you typed. Read every line — it is yours to correct.</p>
-          <p x-show="proj.polishWarning" style="margin:var(--space-2) 0 0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="proj.polishWarning"></p>
+          <p x-show="showPolish && proj.polishStatus === 'done'" style="margin:var(--space-2) 0 0;font-size:13px;opacity:0.6">Rewritten by an AI model from what you typed. Read every line — it is yours to correct.</p>
+          <p x-show="showPolish && proj.polishWarning" style="margin:var(--space-2) 0 0;font-size:14px;line-height:1.5;color:var(--color-accent-2-700)" x-text="proj.polishWarning"></p>
           <button type="button" class="btn btn-ghost" @click="removeProject(idx)" style="margin-top:var(--space-2)">Remove this project</button>
         </div>
       </template>
       <button type="button" class="btn btn-secondary" @click="addProject()">+ Add project</button>
-      <p style="margin-top:var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">"Polish with AI" works the same way it does on the previous step: that one description plus the project name and technology go to an AI model, which rewords them and cannot add a fact, a tool or a figure your notes don't already contain. Nothing is stored, and Undo puts your own words back.</p>
+      <p x-show="showPolish" style="margin-top:var(--space-6);font-size:13px;opacity:0.6;max-width:60ch">"Polish with AI" works the same way it does on the previous step: that one description plus the project name and technology go to an AI model, which rewords them and cannot add a fact, a tool or a figure your notes don't already contain. Nothing is stored, and Undo puts your own words back.</p>
     </section>
 
     <!-- ── 7. Skills and Activities ──────────────────────────────────── -->

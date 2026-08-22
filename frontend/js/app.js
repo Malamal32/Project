@@ -7,23 +7,22 @@
 //
 // All wizard state lives here, in the tab, and is not persisted across a
 // reload. It is not, however, private to the tab, and the landing screen says
-// so: five steps leave the browser, each through js/services/api-service.js.
+// so: three steps leave the browser, each through js/services/api-service.js.
 //
 //   - uploading a transcript reads the PDF here and POSTs only its text to the
 //     extraction service, which sends that text to the Anthropic API (the file
 //     itself never leaves the tab; falls back to in-browser rule-based parsing
 //     of the same text when the service is unreachable);
-//   - importing a LinkedIn export opens the .zip here and POSTs only the five
-//     CSVs the importer reads — no model call, and the archive's connections
-//     and messages never leave the tab;
 //   - continuing past the review step saves the reviewed profile to the
 //     database — the only write in the whole flow;
 //   - generating a resume sends that profile plus the experience and projects
-//     (typed or imported) to the service, which sends them to the Anthropic API;
-//   - polishing one description sends that description and the fields on the
-//     same card (role and employer, or project name and technology) to the
-//     service, which sends them to the Anthropic API. Only on a click, only the
-//     one card, and never automatically.
+//     you type to the service, which sends them to the Anthropic API.
+//
+// Two more calls exist in the code and are unreachable from the UI while
+// SHOW_LINKEDIN_IMPORT and SHOW_POLISH are false — the LinkedIn export import
+// (no model call; the archive's connections and messages never leave the tab)
+// and polishing one description. Turning either flag on puts a fourth or fifth
+// step on that list, and the disclosure copy in index.html has to say so again.
 //
 // Nothing else does. If you add a call, add it to that list and to the
 // disclosure copy in index.html.
@@ -61,6 +60,16 @@ const DROP_REASONS = {
   verbatim_mismatch: 'Reworded a field that must be quoted exactly',
   duplicate: 'Repeats another line'
 };
+
+// Two features that are built, tested and reachable, but not shown. Flipping a
+// flag back to true is the whole of turning one on again — the service
+// endpoints, the importer and the row state below are all still wired, so
+// nothing here is dead code to be tidied away. Hiding rather than deleting also
+// keeps the two duplicated file whitelists (frontend/js/services/
+// linkedin-import.js and service/linkedin_import.py) in agreement; deleting one
+// side would break the parity test that guards them.
+const SHOW_LINKEDIN_IMPORT = false;
+const SHOW_POLISH = false;
 
 function delayMin(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -141,6 +150,11 @@ function freshState() {
 export function pathfinder() {
   return {
     ...freshState(),
+
+    // Feature flags, not wizard state: "Start over" must not turn a hidden
+    // feature back on, so these live outside freshState().
+    showLinkedInImport: SHOW_LINKEDIN_IMPORT,
+    showPolish: SHOW_POLISH,
 
     // Not part of the resettable wizard state.
     _analysisRunning: false,

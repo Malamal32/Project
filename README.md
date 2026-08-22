@@ -250,6 +250,12 @@ comes back null with a student-facing warning, and `review_required` is always
 
 ### LinkedIn import (`service/linkedin_import.py`)
 
+**Currently hidden in the UI.** `SHOW_LINKEDIN_IMPORT` in `frontend/js/app.js` is
+`false`, so the experience step shows no drop target and the endpoint below is
+unreachable from the wizard. Everything described here still works and is still
+tested; set the flag to `true` to put it back, and restore the step to the
+disclosure count on the landing screen when you do.
+
 Work experience is the one resume section this product had no source for — a
 transcript does not contain it, so `models/student.py` does not store it and it
 exists only for the lifetime of a resume request. The import gives that section a
@@ -392,6 +398,14 @@ and again on the last screen before drafting.
 
 ## Description polish (`service/description_polish.py`)
 
+**Currently hidden in the UI.** `SHOW_POLISH` in `frontend/js/app.js` is `false`,
+so no "Polish with AI" button is rendered on either the experience or the project
+step and nothing in the wizard calls this endpoint. The stage, its two guards and
+their tests are untouched; set the flag to `true` to put it back, and restore the
+step to the disclosure count on the landing screen when you do.
+`POLISH_ENABLED=false` remains the server-side kill switch and is independent of
+this — the flag hides the button, that one refuses the request.
+
 `POST /api/description/polish` takes one experience or project row and rewrites
 its description into resume lines. It runs from a "Polish with AI" button on the
 wizard step where the student typed it, and the result goes straight back into
@@ -531,8 +545,12 @@ the API's.
 
 `frontend/js/services/api-service.js` is the only door to the network. Five calls
 are real, against the endpoints above: transcript parse, LinkedIn import, profile
-save, resume generate, description polish. Three are **mocks**, clearly marked as
-such, because the endpoint does not exist yet:
+save, resume generate, description polish. Two of those five — LinkedIn import and
+description polish — are real but currently **unreachable**, because the UI that
+called them is hidden behind the two flags at the top of `frontend/js/app.js`;
+that is a hidden feature, not a mock, and the difference is that flipping the flag
+is all it takes. Three are **mocks**, clearly marked as such, because the endpoint
+does not exist yet:
 
 | Call | Status | Note |
 |---|---|---|
