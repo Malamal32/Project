@@ -1,28 +1,77 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
 
-  // This repo ships no Worker — the pipeline is Python. This config exists so
-  // `wrangler d1 ...` and `wrangler r2 ...` resolve the right account and
-  // resources without repeating IDs on every command.
-  "name": "hiring-db-pipeline",
+  // The deployed Pathfinder app: the FastAPI service from `service/` running on
+  // Python Workers, with the browser client served from the same origin.
+  //
+  // Build first — `main` and `assets` both point into `worker/build/`, which is
+  // staged from the repo by `uv run python -m scripts.build_worker`:
+  //
+  //   uv run python -m scripts.build_worker
+  //   cd worker && uv run pywrangler deploy
+  //
+  // The root `wrangler.jsonc` is a different thing: it carries no Worker and
+  // exists so `wrangler d1 ...` resolves the right database for the pipeline.
+  // The Worker name is the deployed subdomain:
+  // coursefolio.stellic-pathfinders.workers.dev.
+  "name": "coursefolio",
+  "main": "build/entry.py",
   "compatibility_date": "2026-08-21",
+  "compatibility_flags": ["python_workers"],
 
   "account_id": "ccae88e535ce0411f251dcd08737bf02",
 
+  "observability": { "enabled": true },
+
+  // Paid plan: up to 5 minutes of CPU time. The default is 30s; raised to
+  // 300s so long-running Anthropic API processing doesn't get cut short.
+  "limits": {
+    "cpu_ms": 300000
+  },
+
+  // Same database the pipeline publishes to with `python -m pipeline.sync_d1`.
+  // The Worker reads the occupation index it loaded and writes student profiles
+  // beside it.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "hiring-db",
-      "database_id": "70abc606-e937-4751-ac61-24ffd1b6f994",
-      "migrations_dir": "migrations/d1"
+      "database_id": "70abc606-e937-4751-ac61-24ffd1b6f994"
     }
   ],
 
-  "r2_buckets": [
-    {
-      // Immutable raw payload bodies; D1 stores only the content-addressed key.
-      "binding": "RAW_DOCS",
-      "bucket_name": "hiring-db-raw"
-    }
-  ]
+  // The browser client. `run_worker_first` so the Python routes win: without
+  // it the asset server would answer /api/* with a 404 before the Worker ever
+  // sees the request.
+  "assets": {
+    "directory": "build/assets",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+
+  "vars": {
+    // Same origin as the API, so the browser's TRANSCRIPT_SERVICE_URL stays
+    // empty and no CORS entry is needed.
+    "PATHFINDER_ALLOWED_ORIGINS": "*",
+    // Static assets are served by the assets binding above, not by FastAPI.
+    "SERVE_FRONTEND": "false",
+
+    // Effort is the latency lever on Claude Opus 5, and the model is unusually
+    // strong at the low end — "low" and "medium" often match what earlier
+    // models needed "high" for. At the default (medium/high) a resume takes
+    // ~35s, which is a long wait staring at a spinner. Sweep these against real
+    // transcripts before trusting them for anything but a demo.
+    //
+    // POLISH_EFFORT is already "low" in service/config.py and is pinned here
+    // only to say so out loud: that stage runs under a button the student is
+    // watching, so it has the least latency budget of the three.
+    "ANTHROPIC_EFFORT": "low",
+    "RESUME_EFFORT": "low",
+    "POLISH_EFFORT": "low"
+  }
+
+  // ANTHROPIC_API_KEY is a secret, not a var:
+  //   cd worker && npx wrangler secret put ANTHROPIC_API_KEY
+  // Without it the deploy still works — extraction falls back to rules, and
+  // resume drafting and description polish report themselves unavailable.
 }
