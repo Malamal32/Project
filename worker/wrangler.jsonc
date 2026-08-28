@@ -23,6 +23,16 @@
 
   "observability": { "enabled": true },
 
+  // Paid-plan ceiling, raised from the 30s default. This buys nothing for the
+  // Anthropic calls themselves — time awaiting a subrequest is not CPU time,
+  // and wall clock is unlimited while the client stays connected. What does
+  // burn CPU here is Pyodide: interpreter startup, FastAPI/Pydantic
+  // validation, and JSON work over transcript-sized payloads, all of which is
+  // slower under WASM than it would be natively.
+  "limits": {
+    "cpu_ms": 300000
+  },
+
   // Same database the pipeline publishes to with `python -m pipeline.sync_d1`.
   // The Worker reads the occupation index it loaded and writes student profiles
   // beside it.
